@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { ListColumn } from "@/components/kanban/list-column"
 import { CardForm, type CardFormData } from "@/components/kanban/card-form"
+import { CardDetailSidebar } from "@/components/kanban/card-detail-sidebar"
 import { useDragDrop } from "@/lib/use-drag-drop"
 import { useAuth } from "@/lib/auth-context"
 import { apiClient } from "@/lib/api"
@@ -46,9 +47,23 @@ export default function BoardPage() {
   const [isCreateListDialogOpen, setIsCreateListDialogOpen] = useState(false)
   const [newListTitle, setNewListTitle] = useState("")
   const [isCreatingList, setIsCreatingList] = useState(false)
+  
+  // Card detail sidebar
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
+  const [isCardDetailOpen, setIsCardDetailOpen] = useState(false)
 
   // Drag and drop
   const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDragLeave } = useDragDrop()
+
+  const handleCardClick = (card: Card) => {
+    setSelectedCard(card)
+    setIsCardDetailOpen(true)
+  }
+
+  const handleCardUpdate = (updatedCard: Card) => {
+    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
+    setSelectedCard(updatedCard)
+  }
 
   // Load data
   useEffect(() => {
@@ -75,9 +90,9 @@ export default function BoardPage() {
       ])
 
       setBoard(boardData)
-      setLists(listsData.items.filter((list) => list.board_id === boardId))
-      setCards(cardsData.items)
-      setLabels(labelsData.items.filter((label) => label.board_id === boardId))
+      setLists(listsData.data?.items?.filter((list) => list.board_id === boardId) || [])
+      setCards(cardsData.data?.items || [])
+      setLabels(labelsData.data?.items?.filter((label) => label.board_id === boardId) || [])
     } catch (error: any) {
       setError("Không thể tải dữ liệu board")
       console.error("Load board error:", error)
@@ -329,26 +344,27 @@ export default function BoardPage() {
       {/* Board content */}
       <div className="p-6">
         <div className="flex space-x-6 overflow-x-auto pb-6">
-          {lists.map((list) => (
-            <ListColumn
-              key={list.id}
-              list={list}
-              cards={cards.filter((card) => card.list_id === list.id)}
-              labels={labels}
-              onAddCard={handleAddCard}
-              onEditCard={handleEditCard}
-              onDeleteCard={handleDeleteCard}
-              onEditList={handleEditList}
-              onDeleteList={handleDeleteList}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              draggedCard={dragState.draggedCard}
-              draggedOverList={dragState.draggedOverList}
-            />
-          ))}
+                      {lists.map((list) => (
+              <ListColumn
+                key={list.id}
+                list={list}
+                cards={cards.filter((card) => card.list_id === list.id)}
+                labels={labels}
+                onAddCard={handleAddCard}
+                onEditCard={handleEditCard}
+                onDeleteCard={handleDeleteCard}
+                onEditList={handleEditList}
+                onDeleteList={handleDeleteList}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                draggedCard={dragState.draggedCard}
+                draggedOverList={dragState.draggedOverList}
+                onCardClick={handleCardClick}
+              />
+            ))}
 
           {/* Add List Button */}
           <div className="w-80 flex-shrink-0">
@@ -418,6 +434,19 @@ export default function BoardPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Card Detail Sidebar */}
+      <CardDetailSidebar
+        card={selectedCard}
+        lists={lists}
+        labels={labels}
+        isOpen={isCardDetailOpen}
+        onClose={() => {
+          setIsCardDetailOpen(false)
+          setSelectedCard(null)
+        }}
+        onUpdate={handleCardUpdate}
+      />
     </div>
   )
 }

@@ -26,6 +26,7 @@ interface ListColumnProps {
   onDrop: (listId: string, position: number) => void
   draggedCard: CardType | null
   draggedOverList: string | null
+  onCardClick: (card: CardType) => void
 }
 
 export function ListColumn({
@@ -44,6 +45,7 @@ export function ListColumn({
   onDrop,
   draggedCard,
   draggedOverList,
+  onCardClick,
 }: ListColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(list.title)
@@ -138,6 +140,7 @@ export function ListColumn({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               isDragging={draggedCard?.id === card.id}
+              onClick={onCardClick}
             />
           </div>
         ))}

@@ -54,7 +54,6 @@ export interface Board {
   created_by?: {
     id: string
     name: string
-    email: string
   }
   created_at?: string
   updated_at?: string
@@ -78,6 +77,7 @@ export interface GetBoardResponse {
     items: Board[]
     meta: PaginatorResponse
   }
+  errors?: any
 }
 
 // List Types
@@ -101,8 +101,13 @@ export interface UpdateListRequest {
 }
 
 export interface GetListResponse {
-  items: List[]
-  meta: PaginatorResponse
+  error_code: number
+  message: string
+  data: {
+    items: List[]
+    meta: PaginatorResponse
+  }
+  errors?: any
 }
 
 // Card Types
@@ -149,8 +154,13 @@ export interface MoveCardRequest {
 }
 
 export interface GetCardResponse {
-  items: Card[]
-  meta: PaginatorResponse
+  error_code: number
+  message: string
+  data: {
+    items: Card[]
+    meta: PaginatorResponse
+  }
+  errors?: any
 }
 
 export interface CardActivity {
@@ -190,8 +200,13 @@ export interface UpdateLabelRequest {
 }
 
 export interface GetLabelResponse {
-  items: Label[]
-  meta: PaginatorResponse
+  error_code: number
+  message: string
+  data: {
+    items: Label[]
+    meta: PaginatorResponse
+  }
+  errors?: any
 }
 
 // User Types

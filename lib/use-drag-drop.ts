@@ -7,6 +7,7 @@ interface DragDropState {
   draggedCard: Card | null
   draggedOverList: string | null
   draggedOverCard: string | null
+  dropPosition: number | null
 }
 
 export function useDragDrop() {
@@ -14,6 +15,7 @@ export function useDragDrop() {
     draggedCard: null,
     draggedOverList: null,
     draggedOverCard: null,
+    dropPosition: null,
   })
 
   const handleDragStart = useCallback((card: Card) => {
@@ -28,14 +30,16 @@ export function useDragDrop() {
       draggedCard: null,
       draggedOverList: null,
       draggedOverCard: null,
+      dropPosition: null,
     })
   }, [])
 
-  const handleDragOver = useCallback((listId: string, cardId?: string) => {
+  const handleDragOver = useCallback((listId: string, cardId?: string, position?: number) => {
     setDragState((prev) => ({
       ...prev,
       draggedOverList: listId,
       draggedOverCard: cardId || null,
+      dropPosition: position || null,
     }))
   }, [])
 
@@ -44,6 +48,7 @@ export function useDragDrop() {
       ...prev,
       draggedOverList: null,
       draggedOverCard: null,
+      dropPosition: null,
     }))
   }, [])
 

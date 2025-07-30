@@ -26,7 +26,6 @@ import type {
   ApiResponse,
 } from "./types"
 
-// const API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
 const API_BASE_URL = "http://localhost:8080/api/v1"
 
 class ApiClient {

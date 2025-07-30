@@ -18,6 +18,7 @@ interface CardItemProps {
   onDragStart: (card: CardType) => void
   onDragEnd: () => void
   isDragging: boolean
+  onClick: (card: CardType) => void
 }
 
 const priorityColors = {
@@ -32,7 +33,7 @@ const priorityLabels = {
   high: "Cao",
 }
 
-export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEnd, isDragging }: CardItemProps) {
+export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onClick }: CardItemProps) {
   const cardLabels = labels.filter((label) => card.labels?.includes(label.id))
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -43,10 +44,11 @@ export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEn
 
   return (
     <Card
-      className={`cursor-move transition-all hover:shadow-sm group ${isDragging ? "opacity-50 rotate-1" : ""}`}
+      className={`cursor-pointer transition-all hover:shadow-sm group ${isDragging ? "opacity-50 rotate-1" : ""}`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
+      onClick={() => onClick(card)}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">

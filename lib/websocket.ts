@@ -23,7 +23,7 @@ export class WebSocketClient {
         return
       }
 
-      const wsUrl = `wss://kanban-api.ngtantai.pro/api/v1/websocket/ws/${boardId}`
+      const wsUrl = `ws://localhost:8080/api/v1/websocket/ws/${boardId}`
       console.log(`🔗 WebSocket URL:`, wsUrl)
 
       try {

@@ -126,12 +126,12 @@ export default function BoardsPage() {
     setError("")
 
     try {
-      const newBoard = await apiClient.createBoard({
+      await apiClient.createBoard({
         name: newBoardName,
         description: newBoardDescription || undefined,
       })
 
-      setBoards((prev) => [newBoard, ...prev])
+      await loadBoards(true)
       setIsCreateDialogOpen(false)
       setNewBoardName("")
       setNewBoardDescription("")
@@ -284,23 +284,20 @@ export default function BoardsPage() {
             {boards.map((board) => (
               <Card
                 key={board.id}
-                className="cursor-pointer hover:shadow-md transition-shadow border-gray-200 relative"
+                className="cursor-pointer hover:shadow-md transition-shadow border-gray-200"
                 onClick={() => handleBoardClick(board.id)}
               >
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium">{board.name}</CardTitle>
+                  <CardTitle className="text-base font-medium line-clamp-1">{board.name}</CardTitle>
                   {board.description && (
                     <CardDescription className="line-clamp-2 text-sm">{board.description}</CardDescription>
                   )}
                 </CardHeader>
-                <CardContent className="pt-0">
-                  {board.alias && <div className="text-xs text-gray-500">Alias: {board.alias}</div>}
-                </CardContent>
                 
-                {/* Created by info at bottom right */}
+                {/* Created by info in separate line */}
                 {board.created_by && (
-                  <div className="absolute bottom-2 right-3">
-                    <div className="flex items-center space-x-1">
+                  <div className="px-6 pb-3">
+                    <div className="flex items-center justify-end space-x-1">
                       <User className="h-3 w-3 text-gray-400" />
                       <span className="text-xs text-gray-500">
                         {board.created_by.name}
