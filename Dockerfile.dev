@@ -1,0 +1,24 @@
+# Development Dockerfile với hot reload
+FROM node:18-alpine
+
+# Cài đặt pnpm
+RUN npm install -g pnpm
+
+# Thiết lập working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* ./
+
+# Cài đặt dependencies
+RUN pnpm install
+
+# Expose port
+EXPOSE 3000
+
+# Set environment variable
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Start development server
+CMD ["pnpm", "dev"] 

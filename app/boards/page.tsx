@@ -1,0 +1,239 @@
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/lib/auth-context"
+import { apiClient } from "@/lib/api"
+import type { Board } from "@/lib/types"
+import { Plus, Search, Loader2, User, LogOut } from "lucide-react"
+
+export default function BoardsPage() {
+  const { user, logout } = useAuth()
+  const router = useRouter()
+  const [boards, setBoards] = useState<Board[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchKeyword, setSearchKeyword] = useState("")
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [newBoardName, setNewBoardName] = useState("")
+  const [newBoardDescription, setNewBoardDescription] = useState("")
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    loadBoards()
+  }, [searchKeyword])
+
+  const loadBoards = async () => {
+    try {
+      const response = await apiClient.getBoards({
+        keyword: searchKeyword || undefined,
+        limit: 50,
+      })
+      setBoards(response.items)
+    } catch (error: any) {
+      setError("Không thể tải danh sách boards")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateBoard = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsCreating(true)
+    setError("")
+
+    try {
+      const newBoard = await apiClient.createBoard({
+        name: newBoardName,
+        description: newBoardDescription || undefined,
+      })
+
+      setBoards((prev) => [newBoard, ...prev])
+      setIsCreateDialogOpen(false)
+      setNewBoardName("")
+      setNewBoardDescription("")
+    } catch (error: any) {
+      setError(error.message || "Không thể tạo board mới")
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleBoardClick = (boardId: string) => {
+    router.push(`/board/${boardId}`)
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Simple header */}
+      <header className="border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">Kanban</h1>
+              <p className="text-sm text-gray-600">{user?.full_name}</p>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" size="sm" onClick={() => router.push("/profile")}>
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </Button>
+
+              <Button variant="ghost" size="sm" onClick={logout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Đăng xuất
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Simple welcome */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Projects</h2>
+          <p className="text-gray-600">Quản lý các dự án của bạn</p>
+        </div>
+
+        {/* Clean search and create */}
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Tìm kiếm projects..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="pl-10 h-10"
+            />
+          </div>
+
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-10">
+                <Plus className="h-4 w-4 mr-2" />
+                Tạo mới
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <form onSubmit={handleCreateBoard}>
+                <DialogHeader>
+                  <DialogTitle>Tạo Project Mới</DialogTitle>
+                  <DialogDescription>Tạo một project mới để quản lý công việc</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="board-name">Tên Project</Label>
+                    <Input
+                      id="board-name"
+                      placeholder="Ví dụ: Website E-commerce"
+                      value={newBoardName}
+                      onChange={(e) => setNewBoardName(e.target.value)}
+                      required
+                      disabled={isCreating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="board-description">Mô tả (tùy chọn)</Label>
+                    <Textarea
+                      id="board-description"
+                      placeholder="Mô tả ngắn về project..."
+                      value={newBoardDescription}
+                      onChange={(e) => setNewBoardDescription(e.target.value)}
+                      disabled={isCreating}
+                      rows={3}
+                    />
+                  </div>
+
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    disabled={isCreating}
+                  >
+                    Hủy
+                  </Button>
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang tạo...
+                      </>
+                    ) : (
+                      "Tạo"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Simple boards grid */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        ) : boards.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500 mb-4">
+              {searchKeyword ? "Không tìm thấy project nào" : "Chưa có project nào"}
+            </div>
+            {!searchKeyword && (
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tạo Project Đầu Tiên
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {boards.map((board) => (
+              <Card
+                key={board.id}
+                className="cursor-pointer hover:shadow-md transition-shadow border-gray-200"
+                onClick={() => handleBoardClick(board.id)}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium">{board.name}</CardTitle>
+                  {board.description && (
+                    <CardDescription className="line-clamp-2 text-sm">{board.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {board.alias && <div className="text-xs text-gray-500">Alias: {board.alias}</div>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

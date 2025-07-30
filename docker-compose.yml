@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  kanban-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Mount source code để có thể edit trực tiếp
+      - .:/app
+      # Exclude node_modules để tránh conflict
+      - /app/node_modules
+    restart: unless-stopped
+    container_name: kanban-web-app 
