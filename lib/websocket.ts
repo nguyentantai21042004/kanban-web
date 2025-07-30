@@ -11,19 +11,33 @@ export class WebSocketClient {
   connect(boardId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.boardId = boardId
-      const token = localStorage.getItem("access_token")
+      const tokenData = localStorage.getItem("access_token")
 
       console.log(`🔌 WEBSOCKET CONNECT`)
       console.log(`📝 Board ID:`, boardId)
-      console.log(`📝 Token:`, token ? "***" : "undefined")
+      console.log(`📝 Token data:`, tokenData ? "***" : "undefined")
 
-      if (!token) {
+      if (!tokenData) {
         console.error(`❌ No access token found for WebSocket`)
         reject(new Error("No access token found"))
         return
       }
 
-      const wsUrl = `ws://localhost:8080/api/v1/websocket/ws/${boardId}`
+      // Parse token data and extract JWT token
+      let token: string
+      try {
+        const parsed = JSON.parse(tokenData)
+        token = parsed.token
+        if (!token) {
+          throw new Error("Token not found in stored data")
+        }
+      } catch (error) {
+        console.error(`❌ Failed to parse token data:`, error)
+        reject(new Error("Invalid token data"))
+        return
+      }
+
+      const wsUrl = `ws://localhost:8080/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
       console.log(`🔗 WebSocket URL:`, wsUrl)
 
       try {
@@ -35,10 +49,12 @@ export class WebSocketClient {
           console.log(`📤 Sending auth message`)
           this.reconnectAttempts = 0
 
-          // Send authentication
+          // Send authentication confirmation
           this.send({
             type: "auth",
-            token: token,
+            data: {
+              token: token,
+            },
           })
 
           resolve()

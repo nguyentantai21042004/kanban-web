@@ -18,7 +18,8 @@ interface CardItemProps {
   onDragStart: (card: CardType) => void
   onDragEnd: () => void
   isDragging: boolean
-  onClick: (card: CardType) => void
+  isDraggedOver?: boolean
+  onCardClick: (card: CardType) => void
 }
 
 const priorityColors = {
@@ -33,7 +34,17 @@ const priorityLabels = {
   high: "Cao",
 }
 
-export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEnd, isDragging, onClick }: CardItemProps) {
+export function CardItem({ 
+  card, 
+  labels, 
+  onEdit, 
+  onDelete, 
+  onDragStart, 
+  onDragEnd, 
+  isDragging, 
+  isDraggedOver = false,
+  onCardClick 
+}: CardItemProps) {
   const cardLabels = labels.filter((label) => card.labels?.includes(label.id))
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -44,18 +55,24 @@ export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEn
 
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-sm group ${isDragging ? "opacity-50 rotate-1" : ""}`}
+      className={`cursor-pointer transition-all duration-300 hover:shadow-sm group ${
+        isDragging 
+          ? "opacity-50 rotate-1 scale-95 shadow-xl border-blue-300" 
+          : isDraggedOver
+          ? "ring-2 ring-purple-500 bg-purple-50 shadow-xl scale-105 border-purple-300"
+          : "hover:shadow-md hover:scale-[1.02]"
+      }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
-      onClick={() => onClick(card)}
+      onClick={() => onCardClick(card)}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <h4 className="text-sm font-medium leading-tight pr-2">{card.title}</h4>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
@@ -98,14 +115,13 @@ export function CardItem({ card, labels, onEdit, onDelete, onDragStart, onDragEn
         {/* Priority and Due Date */}
         <div className="flex items-center justify-between text-xs">
           {card.priority && (
-            <Badge variant="outline" className={priorityColors[card.priority]}>
+            <Badge className={`${priorityColors[card.priority]} text-xs px-2 py-0`}>
               {priorityLabels[card.priority]}
             </Badge>
           )}
-
           {card.due_date && (
             <div className="flex items-center text-gray-500">
-              <Calendar className="mr-1 h-3 w-3" />
+              <Calendar className="h-3 w-3 mr-1" />
               {format(new Date(card.due_date), "dd/MM", { locale: vi })}
             </div>
           )}

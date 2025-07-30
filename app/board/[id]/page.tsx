@@ -53,7 +53,17 @@ export default function BoardPage() {
   const [isCardDetailOpen, setIsCardDetailOpen] = useState(false)
 
   // Drag and drop
-  const { dragState, handleDragStart, handleDragEnd, handleDragOver, handleDragLeave } = useDragDrop()
+  const { 
+    dragState, 
+    handleDragStart, 
+    handleDragEnd, 
+    handleDragOver, 
+    handleDragLeave,
+    isDraggingOver,
+    getDropPosition,
+    draggedCard,
+    draggedOverList
+  } = useDragDrop()
 
   const handleCardClick = (card: Card) => {
     setSelectedCard(card)
@@ -135,7 +145,14 @@ export default function BoardPage() {
   }, [])
 
   const handleCardMoved = useCallback((card: Card) => {
-    setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)))
+    console.log(`📥 Received card_moved event:`, card)
+    
+    setCards((prev) => {
+      // Remove card from current position first
+      const withoutCard = prev.filter((c) => c.id !== card.id)
+      // Add card to new position
+      return [...withoutCard, card]
+    })
   }, [])
 
   const handleCardDeleted = useCallback((cardId: string) => {
@@ -177,6 +194,26 @@ export default function BoardPage() {
           ...data,
         })
         setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
+        
+        // Send websocket event for real-time updates
+        wsClient.send({
+          type: "card_updated",
+          data: {
+            id: updatedCard.id,
+            list_id: updatedCard.list_id,
+            position: updatedCard.position,
+            title: updatedCard.title,
+            description: updatedCard.description,
+            priority: updatedCard.priority,
+            labels: updatedCard.labels,
+            due_date: updatedCard.due_date,
+            is_archived: updatedCard.is_archived,
+            created_by: updatedCard.created_by,
+            created_at: updatedCard.created_at,
+            updated_at: updatedCard.updated_at,
+          },
+        })
+        
         toast({
           title: "Cập nhật thành công",
           description: "Card đã được cập nhật",
@@ -185,6 +222,26 @@ export default function BoardPage() {
         // Create new card
         const newCard = await apiClient.createCard(data)
         setCards((prev) => [...prev, newCard])
+        
+        // Send websocket event for real-time updates
+        wsClient.send({
+          type: "card_created",
+          data: {
+            id: newCard.id,
+            list_id: newCard.list_id,
+            position: newCard.position,
+            title: newCard.title,
+            description: newCard.description,
+            priority: newCard.priority,
+            labels: newCard.labels,
+            due_date: newCard.due_date,
+            is_archived: newCard.is_archived,
+            created_by: newCard.created_by,
+            created_at: newCard.created_at,
+            updated_at: newCard.updated_at,
+          },
+        })
+        
         toast({
           title: "Tạo thành công",
           description: "Card mới đã được tạo",
@@ -199,6 +256,15 @@ export default function BoardPage() {
     try {
       await apiClient.deleteCards([cardId])
       setCards((prev) => prev.filter((c) => c.id !== cardId))
+      
+      // Send websocket event for real-time updates
+      wsClient.send({
+        type: "card_deleted",
+        data: {
+          id: cardId,
+        },
+      })
+      
       toast({
         title: "Xóa thành công",
         description: "Card đã được xóa",
@@ -217,17 +283,33 @@ export default function BoardPage() {
     e.preventDefault()
     if (!newListTitle.trim()) return
 
-    setIsCreatingList(true)
     try {
+      setIsCreatingList(true)
       const newList = await apiClient.createList({
-        title: newListTitle.trim(),
         board_id: boardId,
-        position: lists.length,
+        title: newListTitle,
+        position: lists.length + 1,
       })
 
       setLists((prev) => [...prev, newList])
-      setIsCreateListDialogOpen(false)
       setNewListTitle("")
+      setIsCreateListDialogOpen(false)
+      
+      // Send websocket event for real-time updates
+      wsClient.send({
+        type: "list_created",
+        data: {
+          id: newList.id,
+          board_id: newList.board_id,
+          title: newList.title,
+          position: newList.position,
+          is_archived: newList.is_archived,
+          created_by: newList.created_by,
+          created_at: newList.created_at,
+          updated_at: newList.updated_at,
+        },
+      })
+
       toast({
         title: "Tạo thành công",
         description: "List mới đã được tạo",
@@ -235,7 +317,7 @@ export default function BoardPage() {
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: "Không thể tạo list mới",
+        description: "Không thể tạo list",
         variant: "destructive",
       })
     } finally {
@@ -245,8 +327,28 @@ export default function BoardPage() {
 
   const handleEditList = async (list: List) => {
     try {
-      const updatedList = await apiClient.updateList(list)
+      const updatedList = await apiClient.updateList({
+        id: list.id,
+        title: list.title,
+        position: list.position,
+      })
+
       setLists((prev) => prev.map((l) => (l.id === updatedList.id ? updatedList : l)))
+      
+      // Send websocket event for real-time updates
+      wsClient.send({
+        type: "list_updated",
+        data: {
+          id: updatedList.id,
+          board_id: updatedList.board_id,
+          title: updatedList.title,
+          position: updatedList.position,
+          is_archived: updatedList.is_archived,
+          created_by: updatedList.created_by,
+          created_at: updatedList.created_at,
+          updated_at: updatedList.updated_at,
+        },
+      })
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -261,6 +363,15 @@ export default function BoardPage() {
       await apiClient.deleteLists([listId])
       setLists((prev) => prev.filter((l) => l.id !== listId))
       setCards((prev) => prev.filter((c) => c.list_id !== listId))
+      
+      // Send websocket event for real-time updates
+      wsClient.send({
+        type: "list_deleted",
+        data: {
+          id: listId,
+        },
+      })
+
       toast({
         title: "Xóa thành công",
         description: "List đã được xóa",
@@ -276,17 +387,83 @@ export default function BoardPage() {
 
   // Drag and drop
   const handleDrop = async (listId: string, position: number) => {
-    if (!dragState.draggedCard) return
+    if (!draggedCard) return
+
+    console.log(`🎯 Drop - Card: ${draggedCard.title}, List: ${listId}, Position: ${position}`)
 
     try {
-      const updatedCard = await apiClient.moveCard({
-        id: dragState.draggedCard.id,
-        list_id: listId,
-        position,
+      // Optimistic update - update UI immediately
+      const isSameList = draggedCard.list_id === listId
+      
+      // Remove card from current position
+      setCards((prev) => prev.filter((c) => c.id !== draggedCard.id))
+      
+      // Add card to new position
+      setCards((prev) => {
+        const cardsInList = prev.filter((c) => c.list_id === listId)
+        const otherCards = prev.filter((c) => c.list_id !== listId)
+        
+        // Insert card at new position
+        const newCardsInList = [...cardsInList]
+        newCardsInList.splice(position, 0, {
+          ...draggedCard,
+          list_id: listId,
+          position: position,
+        })
+        
+        // Update positions for cards after the inserted position
+        for (let i = position + 1; i < newCardsInList.length; i++) {
+          newCardsInList[i] = {
+            ...newCardsInList[i],
+            position: i,
+          }
+        }
+        
+        return [...otherCards, ...newCardsInList]
       })
 
+      // Call API to update server with calculated position
+      // BE will handle the actual position calculation
+      const updatedCard = await apiClient.moveCard({
+        id: draggedCard.id,
+        list_id: listId,
+        position: position, // Send the target position, BE will calculate actual position
+      })
+
+      console.log(`📥 API Response:`, updatedCard)
+
+      // Update with server response (which has the actual calculated position)
       setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
+
+      // Send websocket event for real-time updates
+      wsClient.send({
+        type: "card_moved",
+        data: {
+          id: updatedCard.id,
+          list_id: updatedCard.list_id,
+          position: updatedCard.position,
+          title: updatedCard.title,
+          description: updatedCard.description,
+          priority: updatedCard.priority,
+          labels: updatedCard.labels,
+          due_date: updatedCard.due_date,
+          is_archived: updatedCard.is_archived,
+          created_by: updatedCard.created_by,
+          created_at: updatedCard.created_at,
+          updated_at: updatedCard.updated_at,
+        },
+      })
+
+      console.log(`✅ Card moved successfully: ${updatedCard.title} to position ${updatedCard.position}`)
     } catch (error: any) {
+      console.error(`❌ Failed to move card:`, error)
+      
+      // Revert optimistic update on error
+      setCards((prev) => {
+        const withoutDraggedCard = prev.filter((c) => c.id !== draggedCard!.id)
+        return [...withoutDraggedCard, draggedCard!]
+      })
+      
       toast({
         title: "Lỗi",
         description: "Không thể di chuyển card",
@@ -343,28 +520,30 @@ export default function BoardPage() {
 
       {/* Board content */}
       <div className="p-6">
-        <div className="flex space-x-6 overflow-x-auto pb-6">
-                      {lists.map((list) => (
-              <ListColumn
-                key={list.id}
-                list={list}
-                cards={cards.filter((card) => card.list_id === list.id)}
-                labels={labels}
-                onAddCard={handleAddCard}
-                onEditCard={handleEditCard}
-                onDeleteCard={handleDeleteCard}
-                onEditList={handleEditList}
-                onDeleteList={handleDeleteList}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                draggedCard={dragState.draggedCard}
-                draggedOverList={dragState.draggedOverList}
-                onCardClick={handleCardClick}
-              />
-            ))}
+        <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
+          {lists.map((list) => (
+            <ListColumn
+              key={list.id}
+              list={list}
+              cards={cards.filter((card) => card.list_id === list.id)}
+              labels={labels}
+              onAddCard={handleAddCard}
+              onEditCard={handleEditCard}
+              onDeleteCard={handleDeleteCard}
+              onEditList={handleEditList}
+              onDeleteList={handleDeleteList}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              draggedCard={draggedCard}
+              draggedOverList={draggedOverList}
+              onCardClick={handleCardClick}
+              isDraggingOver={isDraggingOver}
+              getDropPosition={getDropPosition}
+            />
+          ))}
 
           {/* Add List Button */}
           <div className="w-80 flex-shrink-0">

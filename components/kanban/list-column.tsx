@@ -21,12 +21,14 @@ interface ListColumnProps {
   onDeleteList: (listId: string) => void
   onDragStart: (card: CardType) => void
   onDragEnd: () => void
-  onDragOver: (listId: string, cardId?: string) => void
+  onDragOver: (listId: string, cardId?: string, position?: number) => void
   onDragLeave: () => void
   onDrop: (listId: string, position: number) => void
   draggedCard: CardType | null
   draggedOverList: string | null
   onCardClick: (card: CardType) => void
+  isDraggingOver: (listId: string) => boolean
+  getDropPosition: (listId: string) => number | null
 }
 
 export function ListColumn({
@@ -46,23 +48,73 @@ export function ListColumn({
   draggedCard,
   draggedOverList,
   onCardClick,
+  isDraggingOver,
+  getDropPosition,
 }: ListColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(list.title)
 
   const sortedCards = [...cards].sort((a, b) => a.position - b.position)
-  const isDraggedOver = draggedOverList === list.id
+  const isDraggedOverThis = isDraggingOver(list.id)
+  const dropPosition = getDropPosition(list.id)
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
-    onDragOver(list.id)
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const y = e.clientY - rect.top
+    const headerHeight = 60 // Card header height
+    const cardSpacing = 12 // Space between cards
+    const cardHeight = 100 // Card height including spacing
+    
+    // Calculate position based on actual card positions
+    let position = 0
+    if (y > headerHeight) {
+      const cardAreaY = y - headerHeight
+      position = Math.floor(cardAreaY / cardHeight)
+      position = Math.max(0, Math.min(position, cards.length))
+    }
+    
+    // Enhanced visual feedback for top position
+    const isNearTop = y < headerHeight + 30
+    const isNearBottom = y > rect.height - 30
+    
+    // Auto-scroll when near edges
+    if (isNearTop) {
+      const container = e.currentTarget.closest('.board-container')
+      if (container) {
+        container.scrollLeft -= 10
+      }
+    } else if (isNearBottom) {
+      const container = e.currentTarget.closest('.board-container')
+      if (container) {
+        container.scrollLeft += 10
+      }
+    }
+    
+    console.log(`🎯 Drag over - Y: ${y}, Position: ${position}, Cards: ${cards.length}, NearTop: ${isNearTop}, NearBottom: ${isNearBottom}`)
+    onDragOver(list.id, undefined, position)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    const newPosition = cards.length
-    onDrop(list.id, newPosition)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const y = e.clientY - rect.top
+    const headerHeight = 60 // Card header height
+    const cardSpacing = 12 // Space between cards
+    const cardHeight = 100 // Card height including spacing
+    
+    // Calculate position based on actual card positions
+    let position = 0
+    if (y > headerHeight) {
+      const cardAreaY = y - headerHeight
+      position = Math.floor(cardAreaY / cardHeight)
+      position = Math.max(0, Math.min(position, cards.length))
+    }
+    
+    console.log(`🎯 Drop - Y: ${y}, Position: ${position}, Cards: ${cards.length}`)
+    onDrop(list.id, position)
   }
 
   const handleTitleSubmit = (e: React.FormEvent) => {
@@ -82,7 +134,11 @@ export function ListColumn({
 
   return (
     <Card
-      className={`w-80 flex-shrink-0 transition-all ${isDraggedOver ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
+      className={`w-80 flex-shrink-0 transition-all duration-300 ${
+        isDraggedOverThis 
+          ? "ring-2 ring-blue-500 bg-blue-50 shadow-xl scale-105 border-blue-300" 
+          : "hover:shadow-md"
+      }`}
       onDragOver={handleDragOver}
       onDragLeave={onDragLeave}
       onDrop={handleDrop}
@@ -102,7 +158,7 @@ export function ListColumn({
             </form>
           ) : (
             <CardTitle
-              className="text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+              className="text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
               onClick={() => setIsEditingTitle(true)}
             >
               {list.title} ({cards.length})
@@ -120,7 +176,7 @@ export function ListColumn({
                 <Edit className="mr-2 h-4 w-4" />
                 Đổi tên
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDeleteList(list.id)} className="text-red-600">
+              <DropdownMenuItem onClick={() => onDeleteList(list.id)}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Xóa list
               </DropdownMenuItem>
@@ -129,28 +185,53 @@ export function ListColumn({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {sortedCards.map((card) => (
-          <div key={card.id} className="group">
-            <CardItem
-              card={card}
-              labels={labels}
-              onEdit={onEditCard}
-              onDelete={onDeleteCard}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-              isDragging={draggedCard?.id === card.id}
-              onClick={onCardClick}
-            />
+      <CardContent className="pt-0 pb-4">
+        {/* Top drop zone indicator */}
+        {isDraggedOverThis && dropPosition === 0 && (
+          <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse mb-3 transition-all duration-300 shadow-lg relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
           </div>
-        ))}
+        )}
+
+        <div className="space-y-2">
+          {sortedCards.map((card, index) => (
+            <div key={card.id}>
+              <CardItem
+                card={card}
+                labels={labels}
+                onEdit={onEditCard}
+                onDelete={onDeleteCard}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onCardClick={onCardClick}
+                isDragging={draggedCard?.id === card.id}
+                isDraggedOver={isDraggedOverThis && dropPosition === index + 1}
+              />
+              
+              {/* Drop zone indicator between cards */}
+              {isDraggedOverThis && dropPosition === index + 1 && (
+                <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse my-2 transition-all duration-300 shadow-lg relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom drop zone indicator */}
+        {isDraggedOverThis && dropPosition === cards.length && cards.length > 0 && (
+          <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse mt-3 transition-all duration-300 shadow-lg relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
+          </div>
+        )}
 
         <Button
           variant="ghost"
-          className="w-full justify-start text-gray-600 hover:text-gray-900 h-8"
+          size="sm"
+          className="w-full mt-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           onClick={() => onAddCard(list.id)}
         >
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="h-4 w-4 mr-2" />
           Thêm card
         </Button>
       </CardContent>
