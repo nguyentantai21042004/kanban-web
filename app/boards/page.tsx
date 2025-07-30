@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,9 +44,20 @@ export default function BoardsPage() {
   // Ref for intersection observer
   const observerRef = useRef<HTMLDivElement>(null)
 
+  // Debounce search keyword
+  const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState(searchKeyword)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchKeyword(searchKeyword)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchKeyword])
+
   useEffect(() => {
     loadBoards(true) // Reset to first page
-  }, [searchKeyword])
+  }, [debouncedSearchKeyword])
 
   const loadBoards = async (reset = false) => {
     try {
@@ -59,7 +70,7 @@ export default function BoardsPage() {
       }
 
       const response = await apiClient.getBoards({
-        keyword: searchKeyword || undefined,
+        keyword: debouncedSearchKeyword || undefined,
         page: reset ? 1 : currentPage + 1,
         limit: 10,
       })
@@ -92,12 +103,10 @@ export default function BoardsPage() {
   }
 
   // Infinite scroll handler
-  const handleScroll = useCallback(() => {
-    if (isLoadingMore || !hasMore) return
-
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
           loadBoards(false)
         }
       },
@@ -109,11 +118,7 @@ export default function BoardsPage() {
     }
 
     return () => observer.disconnect()
-  }, [isLoadingMore, hasMore])
-
-  useEffect(() => {
-    handleScroll()
-  }, [handleScroll])
+  }, [hasMore, isLoadingMore])
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -279,7 +284,7 @@ export default function BoardsPage() {
             {boards.map((board) => (
               <Card
                 key={board.id}
-                className="cursor-pointer hover:shadow-md transition-shadow border-gray-200"
+                className="cursor-pointer hover:shadow-md transition-shadow border-gray-200 relative"
                 onClick={() => handleBoardClick(board.id)}
               >
                 <CardHeader className="pb-3">
@@ -291,6 +296,18 @@ export default function BoardsPage() {
                 <CardContent className="pt-0">
                   {board.alias && <div className="text-xs text-gray-500">Alias: {board.alias}</div>}
                 </CardContent>
+                
+                {/* Created by info at bottom right */}
+                {board.created_by && (
+                  <div className="absolute bottom-2 right-3">
+                    <div className="flex items-center space-x-1">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs text-gray-500">
+                        {board.created_by.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </Card>
             ))}
             {isLoadingMore && (
