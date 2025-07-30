@@ -10,7 +10,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Kanban Board - Quản lý công việc hiệu quả",
   description: "Hệ thống Kanban board đơn giản và hiệu quả cho nhóm nhỏ",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

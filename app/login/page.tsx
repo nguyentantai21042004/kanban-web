@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -26,7 +26,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await login(email, password)
+      await login(username, password)
       router.push("/boards")
     } catch (error: any) {
       setError(error.message || "Đăng nhập thất bại")
@@ -52,15 +52,15 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email
+                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  Username
                 </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="tai210420004@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="your_username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
                   className="h-10"

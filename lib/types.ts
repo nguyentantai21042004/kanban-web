@@ -16,19 +16,22 @@ export interface PaginatorResponse {
 
 // Auth Types
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
 }
 
 export interface LoginResponse {
-  access_token: string
-  refresh_token: string
-  user: UserInfo
+  error_code: number
+  message: string
+  data: {
+    access_token: string
+    user: UserInfo
+  }
 }
 
 export interface UserInfo {
   id: string
-  email: string
+  username: string
   full_name: string
   role: string
 }
@@ -62,8 +65,12 @@ export interface UpdateBoardRequest {
 }
 
 export interface GetBoardResponse {
-  items: Board[]
-  meta: PaginatorResponse
+  error_code: number
+  message: string
+  data: {
+    items: Board[]
+    meta: PaginatorResponse
+  }
 }
 
 // List Types

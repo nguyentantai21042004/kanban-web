@@ -13,19 +13,26 @@ export class WebSocketClient {
       this.boardId = boardId
       const token = localStorage.getItem("access_token")
 
+      console.log(`🔌 WEBSOCKET CONNECT`)
+      console.log(`📝 Board ID:`, boardId)
+      console.log(`📝 Token:`, token ? "***" : "undefined")
+
       if (!token) {
+        console.error(`❌ No access token found for WebSocket`)
         reject(new Error("No access token found"))
         return
       }
 
       const wsUrl = `wss://kanban-api.ngtantai.pro/api/v1/websocket/ws/${boardId}`
+      console.log(`🔗 WebSocket URL:`, wsUrl)
 
       try {
         this.ws = new WebSocket(wsUrl)
 
         // Send auth token after connection
         this.ws.onopen = () => {
-          console.log("WebSocket connected")
+          console.log(`✅ WebSocket connected successfully`)
+          console.log(`📤 Sending auth message`)
           this.reconnectAttempts = 0
 
           // Send authentication
@@ -38,24 +45,27 @@ export class WebSocketClient {
         }
 
         this.ws.onmessage = (event) => {
+          console.log(`📥 WebSocket message received:`, event.data)
           try {
             const message: WebSocketMessage = JSON.parse(event.data)
+            console.log(`📥 Parsed message:`, message)
             this.handleMessage(message)
           } catch (error) {
-            console.error("Failed to parse WebSocket message:", error)
+            console.error("❌ Failed to parse WebSocket message:", error)
           }
         }
 
         this.ws.onclose = (event) => {
-          console.log("WebSocket disconnected:", event.code, event.reason)
+          console.log(`🔌 WebSocket disconnected:`, event.code, event.reason)
           this.handleReconnect()
         }
 
         this.ws.onerror = (error) => {
-          console.error("WebSocket error:", error)
+          console.error("❌ WebSocket error:", error)
           reject(error)
         }
       } catch (error) {
+        console.error("❌ WebSocket connection failed:", error)
         reject(error)
       }
     })
@@ -74,20 +84,12 @@ export class WebSocketClient {
     }
   }
 
-  private handleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts && this.boardId) {
-      this.reconnectAttempts++
-      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-
-      setTimeout(() => {
-        this.connect(this.boardId!).catch(console.error)
-      }, this.reconnectDelay * this.reconnectAttempts)
-    }
-  }
-
-  send(data: any) {
+  send(message: WebSocketMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data))
+      console.log(`📤 WebSocket sending message:`, message)
+      this.ws.send(JSON.stringify(message))
+    } else {
+      console.error(`❌ WebSocket not connected, cannot send message:`, message)
     }
   }
 
@@ -105,7 +107,8 @@ export class WebSocketClient {
     }
   }
 
-  disconnect() {
+  disconnect(): void {
+    console.log(`🔌 WebSocket disconnecting`)
     if (this.ws) {
       this.ws.close()
       this.ws = null
@@ -117,6 +120,23 @@ export class WebSocketClient {
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN
+  }
+
+  private handleReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++
+      console.log(`🔄 WebSocket reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`)
+      
+      setTimeout(() => {
+        if (this.boardId) {
+          this.connect(this.boardId).catch((error) => {
+            console.error(`❌ WebSocket reconnection failed:`, error)
+          })
+        }
+      }, this.reconnectDelay * this.reconnectAttempts)
+    } else {
+      console.error(`❌ WebSocket max reconnection attempts reached`)
+    }
   }
 }
 

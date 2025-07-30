@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,30 +28,92 @@ export default function BoardsPage() {
   const router = useRouter()
   const [boards, setBoards] = useState<Board[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [newBoardName, setNewBoardName] = useState("")
   const [newBoardDescription, setNewBoardDescription] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState("")
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalPages, setTotalPages] = useState(1)
+  
+  // Ref for intersection observer
+  const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    loadBoards()
+    loadBoards(true) // Reset to first page
   }, [searchKeyword])
 
-  const loadBoards = async () => {
+  const loadBoards = async (reset = false) => {
     try {
+      if (reset) {
+        setIsLoading(true)
+        setCurrentPage(1)
+        setBoards([])
+      } else {
+        setIsLoadingMore(true)
+      }
+
       const response = await apiClient.getBoards({
         keyword: searchKeyword || undefined,
-        limit: 50,
+        page: reset ? 1 : currentPage + 1,
+        limit: 10,
       })
-      setBoards(response.items)
+
+      // Check response format
+      if (response.error_code !== 0) {
+        throw new Error(response.message || "Failed to load boards")
+      }
+
+      const { items, meta } = response.data
+      
+      if (reset) {
+        setBoards(items || [])
+      } else {
+        setBoards(prev => [...prev, ...(items || [])])
+      }
+      
+      setCurrentPage(reset ? 1 : currentPage + 1)
+      setTotalPages(meta.total_pages)
+      setHasMore(meta.current_page < meta.total_pages)
     } catch (error: any) {
       setError("Không thể tải danh sách boards")
+      if (reset) {
+        setBoards([])
+      }
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
   }
+
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    if (isLoadingMore || !hasMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadBoards(false)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [isLoadingMore, hasMore])
+
+  useEffect(() => {
+    handleScroll()
+  }, [handleScroll])
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -200,7 +262,7 @@ export default function BoardsPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
-        ) : boards.length === 0 ? (
+        ) : !boards || boards.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500 mb-4">
               {searchKeyword ? "Không tìm thấy project nào" : "Chưa có project nào"}
@@ -231,8 +293,19 @@ export default function BoardsPage() {
                 </CardContent>
               </Card>
             ))}
+            {isLoadingMore && (
+              <div className="col-span-full text-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            )}
+            {!hasMore && boards.length > 0 && (
+              <div className="col-span-full text-center py-4 text-gray-500 text-sm">
+                Đã tải hết
+              </div>
+            )}
           </div>
         )}
+        <div ref={observerRef} />
       </div>
     </div>
   )
