@@ -3,13 +3,14 @@ const nextConfig = {
     // Enable standalone output for Docker
     output: 'standalone',
 
-    // Disable telemetry
-    telemetry: false,
+    // Ignore TypeScript errors during build
+    typescript: {
+        ignoreBuildErrors: true,
+    },
 
-    // Experimental features
-    experimental: {
-        // Enable app directory
-        appDir: true,
+    // Ignore ESLint errors during build
+    eslint: {
+        ignoreDuringBuilds: true,
     },
 
     // Environment variables

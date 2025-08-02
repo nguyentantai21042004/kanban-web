@@ -138,7 +138,6 @@ Dockerfile*
 # Lock files (keep package-lock.json or yarn.lock)
 package-lock.json
 yarn.lock
-pnpm-lock.yaml
 
 # OS generated files
 .DS_Store

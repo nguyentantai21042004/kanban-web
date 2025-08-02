@@ -54,7 +54,6 @@ export default function BoardPage() {
 
   // Drag and drop
   const { 
-    dragState, 
     handleDragStart, 
     handleDragEnd, 
     handleDragOver, 
