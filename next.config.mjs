@@ -1,15 +1,78 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    typescript: {
-        ignoreBuildErrors: true,
-    },
-    images: {
-        unoptimized: true,
-    },
+    // Enable standalone output for Docker
     output: 'standalone',
+
+    // Disable telemetry
+    telemetry: false,
+
+    // Experimental features
+    experimental: {
+        // Enable app directory
+        appDir: true,
+    },
+
+    // Environment variables
+    env: {
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://kanban-api.ngtantai.pro',
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://kanban.ngtantai.pro',
+    },
+
+    // Headers for security
+    async headers() {
+        return [{
+            source: '/(.*)',
+            headers: [{
+                    key: 'X-Frame-Options',
+                    value: 'DENY',
+                },
+                {
+                    key: 'X-Content-Type-Options',
+                    value: 'nosniff',
+                },
+                {
+                    key: 'X-XSS-Protection',
+                    value: '1; mode=block',
+                },
+                {
+                    key: 'Referrer-Policy',
+                    value: 'strict-origin-when-cross-origin',
+                },
+            ],
+        }, ]
+    },
+
+    // Redirects
+    async redirects() {
+        return [{
+            source: '/api/:path*',
+            destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+            permanent: true,
+        }, ]
+    },
+
+    // Images configuration
+    images: {
+        domains: ['kanban-api.ngtantai.pro', 'kanban.ngtantai.pro'],
+        formats: ['image/webp', 'image/avif'],
+    },
+
+    // Webpack configuration
+    webpack: (config, {
+        isServer
+    }) => {
+        // Optimize bundle size
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                fs: false,
+                net: false,
+                tls: false,
+            }
+        }
+
+        return config
+    },
 }
 
 export default nextConfig

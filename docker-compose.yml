@@ -9,11 +9,18 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3000
-    volumes:
-      # Mount source code để có thể edit trực tiếp
-      - .:/app
-      # Exclude node_modules để tránh conflict
-      - /app/node_modules
+      - NEXT_PUBLIC_API_URL=https://kanban-api.ngtantai.pro
+      - NEXT_PUBLIC_APP_URL=https://kanban.ngtantai.pro
     restart: unless-stopped
-    container_name: kanban-web-app 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - kanban-network
+
+networks:
+  kanban-network:
+    driver: bridge 
