@@ -1,16 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { apiClient } from "@/lib/api"
 import type { Card, List, Label } from "@/lib/types"
-import { X, Edit, Save, Calendar, Tag, User, Clock } from "lucide-react"
+import { 
+  X, 
+  Edit, 
+  Save, 
+  Calendar, 
+  Tag, 
+  User, 
+  Clock, 
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus
+} from "lucide-react"
 
 interface CardDetailSidebarProps {
   card: Card | null
@@ -33,13 +47,62 @@ export function CardDetailSidebar({
   const [isEditing, setIsEditing] = useState(false)
   const [editedCard, setEditedCard] = useState<Card | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    // Default to 1/3 of screen width, min 400px, max 800px
+    if (typeof window !== 'undefined') {
+      return Math.max(400, Math.min(800, window.innerWidth / 3))
+    }
+    return 500
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [showLabelSelector, setShowLabelSelector] = useState(false)
+  const resizeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (card) {
       setEditedCard(card)
       setIsEditing(false)
+      setShowLabelSelector(false)
     }
   }, [card])
+
+  // Handle resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && resizeRef.current) {
+        const newWidth = window.innerWidth - e.clientX
+        setSidebarWidth(Math.max(350, Math.min(1000, newWidth))) // Min 350px, Max 1000px
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
+
+  // Handle responsive width on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        const newWidth = Math.max(350, Math.min(1000, window.innerWidth / 3))
+        setSidebarWidth(newWidth)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   if (!card || !isOpen) return null
 
@@ -59,6 +122,7 @@ export function CardDetailSidebar({
 
       onUpdate(updatedCard)
       setIsEditing(false)
+      setShowLabelSelector(false)
       toast({
         title: "Cập nhật thành công",
         description: "Card đã được cập nhật",
@@ -77,171 +141,312 @@ export function CardDetailSidebar({
   const handleCancel = () => {
     setEditedCard(card)
     setIsEditing(false)
+    setShowLabelSelector(false)
+  }
+
+  const handleLabelToggle = (labelId: string) => {
+    if (!editedCard) return
+    
+    const currentLabels = editedCard.labels || []
+    const newLabels = currentLabels.includes(labelId)
+      ? currentLabels.filter(id => id !== labelId)
+      : [...currentLabels, labelId]
+    
+    setEditedCard({ ...editedCard, labels: newLabels })
   }
 
   const currentList = lists.find((list) => list.id === card.list_id)
   const selectedLabels = labels.filter((label) => card.labels?.includes(label.id))
+  const editedSelectedLabels = labels.filter((label) => editedCard?.labels?.includes(label.id))
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-xl z-50 overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Chi tiết Card</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        onClick={onClose}
+      />
+      
+      {/* Sidebar */}
+      <div 
+        className={`fixed inset-y-0 right-0 bg-white border-l border-gray-200 shadow-xl z-50 overflow-hidden transition-all duration-300 ${
+          isCollapsed ? 'w-16' : ''
+        }`}
+        style={{ width: isCollapsed ? '64px' : `${sidebarWidth}px` }}
+      >
+        {/* Resize Handle */}
+        {!isCollapsed && (
+          <div
+            ref={resizeRef}
+            className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize"
+            onMouseDown={() => setIsResizing(true)}
+          >
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <GripVertical className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+        )}
+
+        {/* Collapse/Expand Button */}
+        <div className="absolute -left-3 top-4 z-10">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 w-6 p-0 rounded-full bg-white shadow-md"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? (
+              <ChevronLeft className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </Button>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-6">
-        {/* Title */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <Label className="text-sm font-medium">Tiêu đề</Label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-          {isEditing ? (
-            <Input
-              value={editedCard?.title || ""}
-              onChange={(e) =>
-                setEditedCard(prev => prev ? { ...prev, title: e.target.value } : null)
-              }
-              className="mb-2"
-            />
-          ) : (
-            <h3 className="text-lg font-medium text-gray-900">{card.title}</h3>
-          )}
-        </div>
+        {!isCollapsed && (
+          <>
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Chi tiết Card</h2>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-        {/* Description */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Mô tả</Label>
-          {isEditing ? (
-            <Textarea
-              value={editedCard?.description || ""}
-              onChange={(e) =>
-                setEditedCard(prev => prev ? { ...prev, description: e.target.value } : null)
-              }
-              placeholder="Thêm mô tả..."
-              rows={4}
-            />
-          ) : (
-            <p className="text-gray-600">
-              {card.description || "Chưa có mô tả"}
-            </p>
-          )}
-        </div>
+            {/* Content */}
+            <div className="p-4 space-y-4 overflow-y-auto h-full">
+              {/* Title Section */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Tiêu đề</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedCard?.title || ""}
+                    onChange={(e) =>
+                      setEditedCard(prev => prev ? { ...prev, title: e.target.value } : null)
+                    }
+                    className="text-sm"
+                    placeholder="Nhập tiêu đề..."
+                  />
+                ) : (
+                  <h3 className="text-base font-medium text-gray-900 leading-tight">
+                    {card.title}
+                  </h3>
+                )}
+              </div>
 
-        <Separator />
+              {/* Description Section */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Mô tả</Label>
+                {isEditing ? (
+                  <Textarea
+                    value={editedCard?.description || ""}
+                    onChange={(e) =>
+                      setEditedCard(prev => prev ? { ...prev, description: e.target.value } : null)
+                    }
+                    placeholder="Thêm mô tả..."
+                    rows={4}
+                    className="text-sm resize-none"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {card.description || "Chưa có mô tả"}
+                  </p>
+                )}
+              </div>
 
-        {/* List */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Danh sách</Label>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-gray-700">{currentList?.title}</span>
-          </div>
-        </div>
+              <Separator />
 
-        {/* Priority */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Độ ưu tiên</Label>
-          {isEditing ? (
-            <select
-              value={editedCard?.priority || "medium"}
-              onChange={(e) =>
-                setEditedCard(prev => prev ? { ...prev, priority: e.target.value as any } : null)
-              }
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="low">Thấp</option>
-              <option value="medium">Trung bình</option>
-              <option value="high">Cao</option>
-            </select>
-          ) : (
-            <Badge
-              variant={
-                card.priority === "high" ? "destructive" :
-                card.priority === "medium" ? "default" : "secondary"
-              }
-            >
-              {card.priority === "high" ? "Cao" :
-               card.priority === "medium" ? "Trung bình" : "Thấp"}
-            </Badge>
-          )}
-        </div>
+              {/* Quick Info Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* List */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Danh sách
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-sm text-gray-700">{currentList?.title}</span>
+                  </div>
+                </div>
 
-        {/* Labels */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Nhãn</Label>
-          <div className="flex flex-wrap gap-2">
-            {selectedLabels.map((label) => (
-              <Badge
-                key={label.id}
-                style={{ backgroundColor: label.color }}
-                className="text-white"
-              >
-                {label.name}
-              </Badge>
-            ))}
-          </div>
-        </div>
+                {/* Priority */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Độ ưu tiên
+                  </Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedCard?.priority || "medium"}
+                      onValueChange={(value) =>
+                        setEditedCard(prev => prev ? { ...prev, priority: value as any } : null)
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Thấp</SelectItem>
+                        <SelectItem value="medium">Trung bình</SelectItem>
+                        <SelectItem value="high">Cao</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge
+                      variant={
+                        card.priority === "high" ? "destructive" :
+                        card.priority === "medium" ? "default" : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {card.priority === "high" ? "Cao" :
+                       card.priority === "medium" ? "Trung bình" : "Thấp"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
 
-        {/* Due Date */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Hạn chót</Label>
-          {isEditing ? (
-            <Input
-              type="datetime-local"
-              value={editedCard?.due_date || ""}
-              onChange={(e) =>
-                setEditedCard(prev => prev ? { ...prev, due_date: e.target.value } : null)
-              }
-            />
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-600">
-                {card.due_date ? new Date(card.due_date).toLocaleDateString() : "Chưa có"}
+              {/* Labels Section - Compact */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Nhãn
+                  </Label>
+                  {isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowLabelSelector(!showLabelSelector)}
+                      className="h-6 px-2 text-xs"
+                    >
+                      {showLabelSelector ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Selected Labels Display */}
+                <div className="flex flex-wrap gap-1">
+                  {(isEditing ? editedSelectedLabels : selectedLabels).length > 0 ? (
+                    (isEditing ? editedSelectedLabels : selectedLabels).map((label) => (
+                      <Badge
+                        key={label.id}
+                        style={{ backgroundColor: label.color }}
+                        className="text-white text-xs px-2 py-1"
+                      >
+                        {label.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">Chưa có nhãn</span>
+                  )}
+                </div>
+
+                {/* Label Selector */}
+                {isEditing && showLabelSelector && (
+                  <div className="space-y-2 p-3 bg-gray-50 rounded-md">
+                    <Label className="text-xs font-medium text-gray-600">Chọn nhãn</Label>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {labels.map((label) => (
+                        <div
+                          key={label.id}
+                          className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                          onClick={() => handleLabelToggle(label.id)}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          <span className="text-xs text-gray-700">{label.name}</span>
+                          {(editedCard?.labels || []).includes(label.id) && (
+                            <div className="ml-auto">
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Hạn chót
+                </Label>
+                {isEditing ? (
+                  <Input
+                    type="datetime-local"
+                    value={editedCard?.due_date ? editedCard.due_date.slice(0, 16) : ""}
+                    onChange={(e) =>
+                      setEditedCard(prev => prev ? { ...prev, due_date: e.target.value } : null)
+                    }
+                    className="text-xs"
+                  />
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-3 w-3 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      {card.due_date ? new Date(card.due_date).toLocaleDateString() : "Chưa có"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Metadata */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  <span>Tạo: {new Date(card.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                  <User className="h-3 w-3" />
+                  <span>Cập nhật: {new Date(card.updated_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {isEditing && (
+                <div className="flex space-x-2 pt-4">
+                  <Button onClick={handleCancel} variant="outline" size="sm" className="flex-1">
+                    Hủy
+                  </Button>
+                  <Button onClick={handleSave} disabled={isSaving} size="sm" className="flex-1">
+                    {isSaving ? "Đang lưu..." : "Lưu"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Collapsed View */}
+        {isCollapsed && (
+          <div className="flex flex-col items-center space-y-4 pt-8">
+            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-medium">
+                {card.title.charAt(0).toUpperCase()}
               </span>
             </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Created/Updated Info */}
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Clock className="h-4 w-4" />
-            <span>Tạo lúc: {new Date(card.created_at).toLocaleString()}</span>
-          </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <User className="h-4 w-4" />
-            <span>Cập nhật: {new Date(card.updated_at).toLocaleString()}</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        {isEditing && (
-          <div className="flex space-x-2 pt-4">
-            <Button onClick={handleCancel} variant="outline" className="flex-1">
-              Hủy
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="flex-1">
-              {isSaving ? "Đang lưu..." : "Lưu"}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
             </Button>
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 } 
