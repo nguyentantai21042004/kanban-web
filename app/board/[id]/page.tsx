@@ -394,6 +394,9 @@ export default function BoardPage() {
       // Optimistic update - update UI immediately
       const isSameList = draggedCard.list_id === listId
       
+      // Store original state for rollback
+      const originalCards = [...cards]
+      
       // Remove card from current position
       setCards((prev) => prev.filter((c) => c.id !== draggedCard.id))
       
@@ -402,27 +405,40 @@ export default function BoardPage() {
         const cardsInList = prev.filter((c) => c.list_id === listId)
         const otherCards = prev.filter((c) => c.list_id !== listId)
         
+        // Validate position bounds
+        const validPosition = Math.max(0, Math.min(position, cardsInList.length))
+        
         // Insert card at new position
         const newCardsInList = [...cardsInList]
-        newCardsInList.splice(position, 0, {
+        newCardsInList.splice(validPosition, 0, {
           ...draggedCard,
           list_id: listId,
-          position: position,
+          position: validPosition,
         })
         
         // Update positions for cards after the inserted position
-        for (let i = position + 1; i < newCardsInList.length; i++) {
+        for (let i = validPosition + 1; i < newCardsInList.length; i++) {
           newCardsInList[i] = {
             ...newCardsInList[i],
             position: i,
           }
         }
         
+        // Update positions for cards in source list (if different list)
+        if (!isSameList) {
+          const cardsInSourceList = otherCards.filter((c) => c.list_id === draggedCard.list_id)
+          const updatedCardsInSourceList = cardsInSourceList.map((card, index) => ({
+            ...card,
+            position: index,
+          }))
+          const otherCardsWithoutSource = otherCards.filter((c) => c.list_id !== draggedCard.list_id)
+          return [...otherCardsWithoutSource, ...updatedCardsInSourceList, ...newCardsInList]
+        }
+        
         return [...otherCards, ...newCardsInList]
       })
 
       // Call API to update server with calculated position
-      // BE will handle the actual position calculation
       const updatedCard = await apiClient.moveCard({
         id: draggedCard.id,
         list_id: listId,
@@ -458,10 +474,7 @@ export default function BoardPage() {
       console.error(`❌ Failed to move card:`, error)
       
       // Revert optimistic update on error
-      setCards((prev) => {
-        const withoutDraggedCard = prev.filter((c) => c.id !== draggedCard!.id)
-        return [...withoutDraggedCard, draggedCard!]
-      })
+      setCards(originalCards)
       
       toast({
         title: "Lỗi",

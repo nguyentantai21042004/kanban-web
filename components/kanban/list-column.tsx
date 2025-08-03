@@ -67,12 +67,13 @@ export function ListColumn({
     const headerHeight = 60 // Card header height
     const cardSpacing = 12 // Space between cards
     const cardHeight = 100 // Card height including spacing
+    const totalCardHeight = cardHeight + cardSpacing
     
     // Calculate position based on actual card positions
     let position = 0
     if (y > headerHeight) {
       const cardAreaY = y - headerHeight
-      position = Math.floor(cardAreaY / cardHeight)
+      position = Math.floor(cardAreaY / totalCardHeight)
       position = Math.max(0, Math.min(position, cards.length))
     }
     
@@ -104,12 +105,13 @@ export function ListColumn({
     const headerHeight = 60 // Card header height
     const cardSpacing = 12 // Space between cards
     const cardHeight = 100 // Card height including spacing
+    const totalCardHeight = cardHeight + cardSpacing
     
     // Calculate position based on actual card positions
     let position = 0
     if (y > headerHeight) {
       const cardAreaY = y - headerHeight
-      position = Math.floor(cardAreaY / cardHeight)
+      position = Math.floor(cardAreaY / totalCardHeight)
       position = Math.max(0, Math.min(position, cards.length))
     }
     
