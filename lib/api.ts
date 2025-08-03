@@ -26,7 +26,9 @@ import type {
   ApiResponse,
 } from "./types"
 
-const API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
+// const API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
+const API_BASE_URL = "http://localhost:8080/api/v1"
+
 
 class ApiClient {
   private getAuthHeaders(): HeadersInit {
@@ -158,8 +160,6 @@ class ApiClient {
     page?: number
     limit?: number
   }): Promise<GetBoardResponse> {
-    console.log(`📋 GET BOARDS API CALL`)
-    console.log(`📝 Params:`, params)
     const searchParams = new URLSearchParams()
     if (params?.ids) searchParams.append("ids", params.ids)
     if (params?.keyword) searchParams.append("keyword", params.keyword)
@@ -171,14 +171,10 @@ class ApiClient {
   }
 
   async getBoardById(id: string): Promise<Board> {
-    console.log(`📋 GET BOARD BY ID API CALL`)
-    console.log(`📝 Board ID:`, id)
     return this.request<Board>(`/boards/${id}`)
   }
 
   async createBoard(data: CreateBoardRequest): Promise<Board> {
-    console.log(`📋 CREATE BOARD API CALL`)
-    console.log(`📝 Board Data:`, data)
     return this.request<Board>("/boards", {
       method: "POST",
       body: JSON.stringify(data),
@@ -186,8 +182,6 @@ class ApiClient {
   }
 
   async updateBoard(data: UpdateBoardRequest): Promise<Board> {
-    console.log(`📋 UPDATE BOARD API CALL`)
-    console.log(`📝 Board Data:`, data)
     return this.request<Board>("/boards", {
       method: "PUT",
       body: JSON.stringify(data),
@@ -195,8 +189,6 @@ class ApiClient {
   }
 
   async deleteBoards(ids: string[]): Promise<ApiResponse<null>> {
-    console.log(`📋 DELETE BOARDS API CALL`)
-    console.log(`📝 Board IDs:`, ids)
     return this.request<ApiResponse<null>>("/boards", {
       method: "DELETE",
       body: JSON.stringify({ "ids[]": ids }),
@@ -225,14 +217,10 @@ class ApiClient {
   }
 
   async getListById(id: string): Promise<List> {
-    console.log(`📝 GET LIST BY ID API CALL`)
-    console.log(`📝 List ID:`, id)
     return this.request<List>(`/lists/${id}`)
   }
 
   async createList(data: CreateListRequest): Promise<List> {
-    console.log(`📝 CREATE LIST API CALL`)
-    console.log(`📝 List Data:`, data)
     return this.request<List>("/lists", {
       method: "POST",
       body: JSON.stringify(data),
@@ -240,8 +228,6 @@ class ApiClient {
   }
 
   async updateList(data: UpdateListRequest): Promise<List> {
-    console.log(`📝 UPDATE LIST API CALL`)
-    console.log(`📝 List Data:`, data)
     return this.request<List>("/lists", {
       method: "PUT",
       body: JSON.stringify(data),
@@ -249,8 +235,6 @@ class ApiClient {
   }
 
   async deleteLists(ids: string[]): Promise<ApiResponse<null>> {
-    console.log(`📝 DELETE LISTS API CALL`)
-    console.log(`📝 List IDs:`, ids)
     return this.request<ApiResponse<null>>("/lists", {
       method: "DELETE",
       body: JSON.stringify({ "ids[]": ids }),
@@ -279,14 +263,10 @@ class ApiClient {
   }
 
   async getCardById(id: string): Promise<Card> {
-    console.log(`🃏 GET CARD BY ID API CALL`)
-    console.log(`📝 Card ID:`, id)
     return this.request<Card>(`/cards/${id}`)
   }
 
   async createCard(data: CreateCardRequest): Promise<Card> {
-    console.log(`🃏 CREATE CARD API CALL`)
-    console.log(`📝 Card Data:`, data)
     return this.request<Card>("/cards", {
       method: "POST",
       body: JSON.stringify(data),
@@ -294,8 +274,6 @@ class ApiClient {
   }
 
   async updateCard(data: UpdateCardRequest): Promise<Card> {
-    console.log(`🃏 UPDATE CARD API CALL`)
-    console.log(`📝 Card Data:`, data)
     return this.request<Card>("/cards", {
       method: "PUT",
       body: JSON.stringify(data),
@@ -303,8 +281,6 @@ class ApiClient {
   }
 
   async moveCard(data: MoveCardRequest): Promise<Card> {
-    console.log(`🃏 MOVE CARD API CALL`)
-    console.log(`📝 Move Data:`, data)
     return this.request<Card>("/cards/move", {
       method: "POST",
       body: JSON.stringify(data),
@@ -312,8 +288,6 @@ class ApiClient {
   }
 
   async deleteCards(ids: string[]): Promise<ApiResponse<null>> {
-    console.log(`🃏 DELETE CARDS API CALL`)
-    console.log(`📝 Card IDs:`, ids)
     return this.request<ApiResponse<null>>("/cards", {
       method: "DELETE",
       body: JSON.stringify({ "ids[]": ids }),

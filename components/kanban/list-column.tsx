@@ -52,11 +52,14 @@ export function ListColumn({
   getDropPosition,
 }: ListColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editTitle, setEditTitle] = useState(list.title)
+  const [editTitle, setEditTitle] = useState(list.title || "Untitled List")
 
   const sortedCards = [...cards].sort((a, b) => a.position - b.position)
   const isDraggedOverThis = isDraggingOver(list.id)
   const dropPosition = getDropPosition(list.id)
+
+  // Fallback title if API doesn't return title
+  const displayTitle = list.title || "Untitled List"
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -94,7 +97,6 @@ export function ListColumn({
       }
     }
     
-    console.log(`🎯 Drag over - Y: ${y}, Position: ${position}, Cards: ${cards.length}, NearTop: ${isNearTop}, NearBottom: ${isNearBottom}`)
     onDragOver(list.id, undefined, position)
   }
 
@@ -115,7 +117,6 @@ export function ListColumn({
       position = Math.max(0, Math.min(position, cards.length))
     }
     
-    console.log(`🎯 Drop - Y: ${y}, Position: ${position}, Cards: ${cards.length}`)
     onDrop(list.id, position)
   }
 
@@ -129,7 +130,7 @@ export function ListColumn({
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      setEditTitle(list.title)
+      setEditTitle(list.title || "Untitled List")
       setIsEditingTitle(false)
     }
   }
@@ -163,7 +164,7 @@ export function ListColumn({
               className="text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
               onClick={() => setIsEditingTitle(true)}
             >
-              {list.title} ({cards.length})
+              {displayTitle} ({cards.length})
             </CardTitle>
           )}
 

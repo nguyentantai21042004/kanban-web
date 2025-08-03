@@ -7,15 +7,19 @@ export class WebSocketClient {
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
   private listeners: Map<string, Set<(data: any) => void>> = new Map()
+  private connectionPromise: Promise<void> | null = null // Cache connection promise
 
   connect(boardId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    // Return cached connection if already connecting
+    if (this.connectionPromise) {
+      return this.connectionPromise
+    }
+
+    this.connectionPromise = new Promise((resolve, reject) => {
       this.boardId = boardId
       const tokenData = localStorage.getItem("access_token")
 
       console.log(`🔌 WEBSOCKET CONNECT`)
-      console.log(`📝 Board ID:`, boardId)
-      console.log(`📝 Token data:`, tokenData ? "***" : "undefined")
 
       if (!tokenData) {
         console.error(`❌ No access token found for WebSocket`)
@@ -52,7 +56,7 @@ export class WebSocketClient {
             this.ws.close()
             reject(new Error("Connection timeout"))
           }
-        }, 10000) // 10 seconds timeout
+        }, 5000) // Giảm timeout từ 10s xuống 5s
 
         // Send auth token after connection
         this.ws.onopen = () => {
@@ -86,19 +90,24 @@ export class WebSocketClient {
         this.ws.onclose = (event) => {
           console.log(`🔌 WebSocket disconnected:`, event.code, event.reason)
           clearTimeout(connectionTimeout)
+          this.connectionPromise = null // Reset connection promise
           this.handleReconnect()
         }
 
         this.ws.onerror = (error) => {
           console.error("❌ WebSocket error:", error)
           clearTimeout(connectionTimeout)
+          this.connectionPromise = null // Reset connection promise
           reject(error)
         }
       } catch (error) {
         console.error("❌ WebSocket connection failed:", error)
+        this.connectionPromise = null // Reset connection promise
         reject(error)
       }
     })
+
+    return this.connectionPromise
   }
 
   private handleMessage(message: WebSocketMessage) {

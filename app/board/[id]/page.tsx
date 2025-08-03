@@ -86,9 +86,17 @@ export default function BoardPage() {
     }
 
     return () => {
+      // Cleanup WebSocket listeners
+      wsClient.off("card_created", handleCardCreated)
+      wsClient.off("card_updated", handleCardUpdated)
+      wsClient.off("card_moved", handleCardMoved)
+      wsClient.off("card_deleted", handleCardDeleted)
+      wsClient.off("list_created", handleListCreated)
+      wsClient.off("list_updated", handleListUpdated)
+      wsClient.off("list_deleted", handleListDeleted)
       wsClient.disconnect()
     }
-  }, [boardId])
+  }, [boardId]) // Only depend on boardId
 
   const loadBoardData = async () => {
     try {
@@ -134,7 +142,14 @@ export default function BoardPage() {
   // WebSocket event handlers
   const handleCardCreated = useCallback(
     (card: Card) => {
-      setCards((prev) => [...prev, card])
+      setCards((prev) => {
+        // Check if card already exists to prevent duplicates
+        const exists = prev.some((c) => c.id === card.id)
+        if (exists) {
+          return prev
+        }
+        return [...prev, card]
+      })
       toast({
         title: "Card mới được tạo",
         description: `"${card.title}" đã được thêm vào board`,
@@ -163,7 +178,21 @@ export default function BoardPage() {
   }, [])
 
   const handleListCreated = useCallback((list: List) => {
-    setLists((prev) => [...prev, list])
+    setLists((prev) => {
+      // Check if list already exists to prevent duplicates
+      const exists = prev.some((l) => l.id === list.id)
+      if (exists) {
+        return prev
+      }
+      
+      // Fix title if API returns "string" instead of actual title
+      const fixedList = {
+        ...list,
+        title: list.title === "string" ? "Untitled List" : list.title
+      }
+      
+      return [...prev, fixedList]
+    })
   }, [])
 
   const handleListUpdated = useCallback((list: List) => {
@@ -198,24 +227,8 @@ export default function BoardPage() {
         })
         setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
         
-        // Send websocket event for real-time updates
-        wsClient.send({
-          type: "card_updated",
-          data: {
-            id: updatedCard.id,
-            list_id: updatedCard.list_id,
-            position: updatedCard.position,
-            title: updatedCard.title,
-            description: updatedCard.description,
-            priority: updatedCard.priority,
-            labels: updatedCard.labels,
-            due_date: updatedCard.due_date,
-            is_archived: updatedCard.is_archived,
-            created_by: updatedCard.created_by,
-            created_at: updatedCard.created_at,
-            updated_at: updatedCard.updated_at,
-          },
-        })
+        // Note: Don't send WebSocket event here because we already updated the card in state
+        // The WebSocket event will be handled by handleCardUpdated if other users update cards
         
         toast({
           title: "Cập nhật thành công",
@@ -226,24 +239,8 @@ export default function BoardPage() {
         const newCard = await apiClient.createCard(data)
         setCards((prev) => [...prev, newCard])
         
-        // Send websocket event for real-time updates
-        wsClient.send({
-          type: "card_created",
-          data: {
-            id: newCard.id,
-            list_id: newCard.list_id,
-            position: newCard.position,
-            title: newCard.title,
-            description: newCard.description,
-            priority: newCard.priority,
-            labels: newCard.labels,
-            due_date: newCard.due_date,
-            is_archived: newCard.is_archived,
-            created_by: newCard.created_by,
-            created_at: newCard.created_at,
-            updated_at: newCard.updated_at,
-          },
-        })
+        // Note: Don't send WebSocket event here because we already added the card to state
+        // The WebSocket event will be handled by handleCardCreated if other users create cards
         
         toast({
           title: "Tạo thành công",
@@ -260,13 +257,8 @@ export default function BoardPage() {
       await apiClient.deleteCards([cardId])
       setCards((prev) => prev.filter((c) => c.id !== cardId))
       
-      // Send websocket event for real-time updates
-      wsClient.send({
-        type: "card_deleted",
-        data: {
-          id: cardId,
-        },
-      })
+      // Note: Don't send WebSocket event here because we already removed the card from state
+      // The WebSocket event will be handled by handleCardDeleted if other users delete cards
       
       toast({
         title: "Xóa thành công",
@@ -294,30 +286,28 @@ export default function BoardPage() {
         position: lists.length + 1,
       })
 
-      setLists((prev) => [...prev, newList])
+      // Use the title from form instead of API response (in case API returns "string")
+      const listWithCorrectTitle = {
+        ...newList,
+        title: newListTitle.trim()
+      }
+
+      setLists((prev) => {
+        const updatedLists = [...prev, listWithCorrectTitle]
+        return updatedLists
+      })
       setNewListTitle("")
       setIsCreateListDialogOpen(false)
       
-      // Send websocket event for real-time updates
-      wsClient.send({
-        type: "list_created",
-        data: {
-          id: newList.id,
-          board_id: newList.board_id,
-          title: newList.title,
-          position: newList.position,
-          is_archived: newList.is_archived,
-          created_by: newList.created_by,
-          created_at: newList.created_at,
-          updated_at: newList.updated_at,
-        },
-      })
+      // Note: Don't send WebSocket event here because we already added the list to state
+      // The WebSocket event will be handled by handleListCreated if other users create lists
 
       toast({
         title: "Tạo thành công",
         description: "List mới đã được tạo",
       })
     } catch (error: any) {
+      console.error(`❌ Create list error:`, error)
       toast({
         title: "Lỗi",
         description: "Không thể tạo list",
@@ -338,20 +328,8 @@ export default function BoardPage() {
 
       setLists((prev) => prev.map((l) => (l.id === updatedList.id ? updatedList : l)))
       
-      // Send websocket event for real-time updates
-      wsClient.send({
-        type: "list_updated",
-        data: {
-          id: updatedList.id,
-          board_id: updatedList.board_id,
-          title: updatedList.title,
-          position: updatedList.position,
-          is_archived: updatedList.is_archived,
-          created_by: updatedList.created_by,
-          created_at: updatedList.created_at,
-          updated_at: updatedList.updated_at,
-        },
-      })
+      // Note: Don't send WebSocket event here because we already updated the list in state
+      // The WebSocket event will be handled by handleListUpdated if other users update lists
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -367,13 +345,8 @@ export default function BoardPage() {
       setLists((prev) => prev.filter((l) => l.id !== listId))
       setCards((prev) => prev.filter((c) => c.list_id !== listId))
       
-      // Send websocket event for real-time updates
-      wsClient.send({
-        type: "list_deleted",
-        data: {
-          id: listId,
-        },
-      })
+      // Note: Don't send WebSocket event here because we already removed the list from state
+      // The WebSocket event will be handled by handleListDeleted if other users delete lists
 
       toast({
         title: "Xóa thành công",
@@ -417,8 +390,6 @@ export default function BoardPage() {
   const handleDrop = async (listId: string, position: number) => {
     if (!draggedCard) return
 
-    console.log(`🎯 Drop - Card: ${draggedCard.title}, List: ${listId}, Position: ${position}`)
-
     try {
       // Store original state for rollback
       const originalCards = [...cards]
@@ -440,8 +411,6 @@ export default function BoardPage() {
         position: 0, // Send 0 to let backend calculate the best position
       })
 
-      console.log(`📥 API Response:`, updatedCard)
-
       // Update with server response (which has the actual calculated position)
       setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
 
@@ -459,21 +428,21 @@ export default function BoardPage() {
             labels: updatedCard.labels,
             due_date: updatedCard.due_date,
             is_archived: updatedCard.is_archived,
-            created_by: updatedCard.created_by,
             created_at: updatedCard.created_at,
             updated_at: updatedCard.updated_at,
           },
+          board_id: boardId,
+          user_id: user?.id || "",
+          timestamp: new Date().toISOString(),
         })
       } else {
         console.warn("WebSocket not connected, cannot send message")
       }
-
-      console.log(`✅ Card moved successfully: ${updatedCard.title} to position ${updatedCard.position}`)
     } catch (error: any) {
       console.error(`❌ Failed to move card:`, error)
       
-      // Revert optimistic update on error
-      setCards(originalCards)
+      // Revert optimistic update on error - reload data from server
+      loadBoardData()
       
       toast({
         title: "Lỗi",
@@ -545,7 +514,7 @@ export default function BoardPage() {
         <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
           {lists.map((list) => (
             <ListColumn
-              key={list.id}
+              key={list.id || `list-${list.position}-${list.title}`}
               list={list}
               cards={cards.filter((card) => card.list_id === list.id)}
               labels={labels}

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,7 @@ export default function BoardsPage() {
   
   // Ref for intersection observer
   const observerRef = useRef<HTMLDivElement>(null)
+  const isLoadingRef = useRef(false)
 
   // Debounce search keyword
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState(searchKeyword)
@@ -55,12 +56,13 @@ export default function BoardsPage() {
     return () => clearTimeout(timer)
   }, [searchKeyword])
 
-  useEffect(() => {
-    loadBoards(true) // Reset to first page
-  }, [debouncedSearchKeyword])
-
-  const loadBoards = async (reset = false) => {
+  const loadBoards = useCallback(async (reset = false) => {
+    // Prevent duplicate calls
+    if (isLoadingRef.current) return
+    
     try {
+      isLoadingRef.current = true
+      
       if (reset) {
         setIsLoading(true)
         setCurrentPage(1)
@@ -99,14 +101,54 @@ export default function BoardsPage() {
     } finally {
       setIsLoading(false)
       setIsLoadingMore(false)
+      isLoadingRef.current = false
     }
-  }
+  }, [debouncedSearchKeyword, currentPage])
+
+  const refreshBoards = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setCurrentPage(1)
+      setBoards([])
+
+      const response = await apiClient.getBoards({
+        keyword: debouncedSearchKeyword || undefined,
+        page: 1,
+        limit: 10,
+      })
+
+      if (response.error_code !== 0) {
+        throw new Error(response.message || "Failed to load boards")
+      }
+
+      const { items, meta } = response.data
+      setBoards(items || [])
+      setCurrentPage(1)
+      setTotalPages(meta.total_pages)
+      setHasMore(meta.current_page < meta.total_pages)
+    } catch (error: any) {
+      setError("Không thể tải danh sách boards")
+      setBoards([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [debouncedSearchKeyword])
+
+  // Load boards when debounced search keyword changes
+  useEffect(() => {
+    refreshBoards()
+  }, [debouncedSearchKeyword])
+
+  // Initial load only once
+  useEffect(() => {
+    refreshBoards()
+  }, []) // Empty dependency array for initial load only
 
   // Infinite scroll handler
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading && !isLoadingRef.current) {
           loadBoards(false)
         }
       },
@@ -118,7 +160,7 @@ export default function BoardsPage() {
     }
 
     return () => observer.disconnect()
-  }, [hasMore, isLoadingMore])
+  }, [hasMore, isLoadingMore, isLoading, loadBoards])
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,7 +173,7 @@ export default function BoardsPage() {
         description: newBoardDescription || undefined,
       })
 
-      await loadBoards(true)
+      await refreshBoards()
       setIsCreateDialogOpen(false)
       setNewBoardName("")
       setNewBoardDescription("")
