@@ -1,4 +1,4 @@
-import type { WebSocketMessage } from "./types"
+import type { WebSocketMessage, WebSocketAuthMessage } from "./types"
 
 export class WebSocketClient {
   private ws: WebSocket | null = null
@@ -37,20 +37,32 @@ export class WebSocketClient {
         return
       }
 
-      const wsUrl = `ws://localhost:8080/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
+      const wsUrl = process.env.NODE_ENV === 'production' 
+        ? `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
+        : `ws://localhost:8080/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
       console.log(`🔗 WebSocket URL:`, wsUrl)
 
       try {
         this.ws = new WebSocket(wsUrl)
 
+        // Set connection timeout
+        const connectionTimeout = setTimeout(() => {
+          if (this.ws?.readyState === WebSocket.CONNECTING) {
+            console.error(`❌ WebSocket connection timeout`)
+            this.ws.close()
+            reject(new Error("Connection timeout"))
+          }
+        }, 10000) // 10 seconds timeout
+
         // Send auth token after connection
         this.ws.onopen = () => {
           console.log(`✅ WebSocket connected successfully`)
           console.log(`📤 Sending auth message`)
+          clearTimeout(connectionTimeout)
           this.reconnectAttempts = 0
 
           // Send authentication confirmation
-          this.send({
+          this.sendAuth({
             type: "auth",
             data: {
               token: token,
@@ -73,11 +85,13 @@ export class WebSocketClient {
 
         this.ws.onclose = (event) => {
           console.log(`🔌 WebSocket disconnected:`, event.code, event.reason)
+          clearTimeout(connectionTimeout)
           this.handleReconnect()
         }
 
         this.ws.onerror = (error) => {
           console.error("❌ WebSocket error:", error)
+          clearTimeout(connectionTimeout)
           reject(error)
         }
       } catch (error) {
@@ -106,6 +120,15 @@ export class WebSocketClient {
       this.ws.send(JSON.stringify(message))
     } else {
       console.error(`❌ WebSocket not connected, cannot send message:`, message)
+    }
+  }
+
+  sendAuth(message: WebSocketAuthMessage): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log(`📤 WebSocket sending auth message:`, message)
+      this.ws.send(JSON.stringify(message))
+    } else {
+      console.error(`❌ WebSocket not connected, cannot send auth message:`, message)
     }
   }
 

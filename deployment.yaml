@@ -44,6 +44,8 @@ spec:
           value: "production"
         - name: NEXT_PUBLIC_API_URL
           value: "https://kanban-api.ngtantai.pro"
+        - name: NEXT_PUBLIC_WEBSOCKET_URL
+          value: "https://kanban-api.ngtantai.pro"
         - name: CONTAINER_NAME
           value: "kanban-web"
         - name: KUBERNETES_NAMESPACE
@@ -121,6 +123,7 @@ data:
   NODE_ENV: "production"
   NEXT_PUBLIC_API_URL: "https://kanban-api.ngtantai.pro"
   NEXT_PUBLIC_APP_URL: "https://kanban.ngtantai.pro"
+  NEXT_PUBLIC_WEBSOCKET_URL: "https://kanban.ngtantai.pro"
 
 ---
 apiVersion: autoscaling/v2

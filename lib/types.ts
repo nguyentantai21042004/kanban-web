@@ -227,6 +227,13 @@ export interface UpdateProfileRequest {
 }
 
 // WebSocket Types
+export interface WebSocketAuthMessage {
+  type: "auth"
+  data: {
+    token: string
+  }
+}
+
 export interface WebSocketMessage {
   type:
     | "card_created"

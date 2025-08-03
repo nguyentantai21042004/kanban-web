@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/auth-context"
 import { apiClient } from "@/lib/api"
 import { wsClient } from "@/lib/websocket"
 import type { Board, List, Card, Label } from "@/lib/types"
-import { ArrowLeft, Plus, Loader2, RefreshCw } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, RefreshCw, Trash2 } from "lucide-react"
 
 export default function BoardPage() {
   const params = useParams()
@@ -51,6 +51,10 @@ export default function BoardPage() {
   // Card detail sidebar
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [isCardDetailOpen, setIsCardDetailOpen] = useState(false)
+
+  // Delete board dialog
+  const [isDeleteBoardDialogOpen, setIsDeleteBoardDialogOpen] = useState(false)
+  const [isDeletingBoard, setIsDeletingBoard] = useState(false)
 
   // Drag and drop
   const { 
@@ -384,6 +388,31 @@ export default function BoardPage() {
     }
   }
 
+  // Board operations
+  const handleDeleteBoard = async () => {
+    try {
+      setIsDeletingBoard(true)
+      await apiClient.deleteBoards([boardId])
+      
+      toast({
+        title: "Xóa thành công",
+        description: "Board đã được xóa",
+      })
+      
+      // Redirect to boards page
+      router.push("/boards")
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa board",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeletingBoard(false)
+      setIsDeleteBoardDialogOpen(false)
+    }
+  }
+
   // Drag and drop
   const handleDrop = async (listId: string, position: number) => {
     if (!draggedCard) return
@@ -391,58 +420,24 @@ export default function BoardPage() {
     console.log(`🎯 Drop - Card: ${draggedCard.title}, List: ${listId}, Position: ${position}`)
 
     try {
-      // Optimistic update - update UI immediately
-      const isSameList = draggedCard.list_id === listId
-      
       // Store original state for rollback
       const originalCards = [...cards]
       
-      // Remove card from current position
-      setCards((prev) => prev.filter((c) => c.id !== draggedCard.id))
-      
-      // Add card to new position
+      // Optimistic update - just move the card visually without calculating positions
       setCards((prev) => {
-        const cardsInList = prev.filter((c) => c.list_id === listId)
-        const otherCards = prev.filter((c) => c.list_id !== listId)
-        
-        // Validate position bounds
-        const validPosition = Math.max(0, Math.min(position, cardsInList.length))
-        
-        // Insert card at new position
-        const newCardsInList = [...cardsInList]
-        newCardsInList.splice(validPosition, 0, {
-          ...draggedCard,
-          list_id: listId,
-          position: validPosition,
-        })
-        
-        // Update positions for cards after the inserted position
-        for (let i = validPosition + 1; i < newCardsInList.length; i++) {
-          newCardsInList[i] = {
-            ...newCardsInList[i],
-            position: i,
-          }
-        }
-        
-        // Update positions for cards in source list (if different list)
-        if (!isSameList) {
-          const cardsInSourceList = otherCards.filter((c) => c.list_id === draggedCard.list_id)
-          const updatedCardsInSourceList = cardsInSourceList.map((card, index) => ({
-            ...card,
-            position: index,
-          }))
-          const otherCardsWithoutSource = otherCards.filter((c) => c.list_id !== draggedCard.list_id)
-          return [...otherCardsWithoutSource, ...updatedCardsInSourceList, ...newCardsInList]
-        }
-        
-        return [...otherCards, ...newCardsInList]
+        const updatedCards = prev.map((c) => 
+          c.id === draggedCard.id 
+            ? { ...c, list_id: listId }
+            : c
+        )
+        return updatedCards
       })
 
-      // Call API to update server with calculated position
+      // Call API to update server - let backend calculate the actual position
       const updatedCard = await apiClient.moveCard({
         id: draggedCard.id,
         list_id: listId,
-        position: position, // Send the target position, BE will calculate actual position
+        position: 0, // Send 0 to let backend calculate the best position
       })
 
       console.log(`📥 API Response:`, updatedCard)
@@ -451,23 +446,27 @@ export default function BoardPage() {
       setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
 
       // Send websocket event for real-time updates
-      wsClient.send({
-        type: "card_moved",
-        data: {
-          id: updatedCard.id,
-          list_id: updatedCard.list_id,
-          position: updatedCard.position,
-          title: updatedCard.title,
-          description: updatedCard.description,
-          priority: updatedCard.priority,
-          labels: updatedCard.labels,
-          due_date: updatedCard.due_date,
-          is_archived: updatedCard.is_archived,
-          created_by: updatedCard.created_by,
-          created_at: updatedCard.created_at,
-          updated_at: updatedCard.updated_at,
-        },
-      })
+      if (wsClient.isConnected()) {
+        wsClient.send({
+          type: "card_moved",
+          data: {
+            id: updatedCard.id,
+            list_id: updatedCard.list_id,
+            position: updatedCard.position,
+            title: updatedCard.title,
+            description: updatedCard.description,
+            priority: updatedCard.priority,
+            labels: updatedCard.labels,
+            due_date: updatedCard.due_date,
+            is_archived: updatedCard.is_archived,
+            created_by: updatedCard.created_by,
+            created_at: updatedCard.created_at,
+            updated_at: updatedCard.updated_at,
+          },
+        })
+      } else {
+        console.warn("WebSocket not connected, cannot send message")
+      }
 
       console.log(`✅ Card moved successfully: ${updatedCard.title} to position ${updatedCard.position}`)
     } catch (error: any) {
@@ -522,10 +521,21 @@ export default function BoardPage() {
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" onClick={loadBoardData}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Làm mới
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" onClick={loadBoardData}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Làm mới
+              </Button>
+              
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setIsDeleteBoardDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Xóa Board
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -638,6 +648,33 @@ export default function BoardPage() {
         }}
         onUpdate={handleCardUpdate}
       />
+
+      {/* Delete Board Dialog */}
+      <Dialog open={isDeleteBoardDialogOpen} onOpenChange={setIsDeleteBoardDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa board</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa board này không? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteBoardDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteBoard} disabled={isDeletingBoard}>
+              {isDeletingBoard ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xóa...
+                </>
+              ) : (
+                "Xóa"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
