@@ -23,7 +23,7 @@ import { useAuth } from "@/lib/auth-context"
 import { apiClient } from "@/lib/api"
 import { wsClient } from "@/lib/websocket"
 import type { Board, List, Card, Label } from "@/lib/types"
-import { ArrowLeft, Plus, Loader2, RefreshCw, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Loader2, Trash2 } from "lucide-react"
 
 export default function BoardPage() {
   const params = useParams()
@@ -491,18 +491,13 @@ export default function BoardPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={loadBoardData}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Làm mới
-              </Button>
-              
               <Button 
                 variant="destructive" 
                 size="sm" 
                 onClick={() => setIsDeleteBoardDialogOpen(true)}
+                className="h-8 px-3"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Xóa Board
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>

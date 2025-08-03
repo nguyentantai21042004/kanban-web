@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { Label as LabelComponent } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,15 +13,12 @@ import { apiClient } from "@/lib/api"
 import type { Card, List, Label } from "@/lib/types"
 import { 
   X, 
-  Edit, 
   Save, 
   Calendar, 
   Tag, 
   User, 
   Clock, 
   GripVertical,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   Minus
 } from "lucide-react"
@@ -62,7 +59,7 @@ export function CardDetailSidebar({
   useEffect(() => {
     if (card) {
       setEditedCard(card)
-      setIsEditing(false)
+      setIsEditing(true)
       setShowLabelSelector(false)
     }
   }, [card])
@@ -111,7 +108,11 @@ export function CardDetailSidebar({
 
     setIsSaving(true)
     try {
-      const updatedCard = await apiClient.updateCard({
+      // Lưu dữ liệu trước khi update
+      const originalCard = card
+      
+      // Gọi API update
+      await apiClient.updateCard({
         id: editedCard.id,
         title: editedCard.title,
         description: editedCard.description,
@@ -120,8 +121,18 @@ export function CardDetailSidebar({
         due_date: editedCard.due_date,
       })
 
+      // Tạo object card mới với dữ liệu đã update
+      const updatedCard: Card = {
+        ...originalCard,
+        title: editedCard.title,
+        description: editedCard.description,
+        priority: editedCard.priority,
+        labels: editedCard.labels,
+        due_date: editedCard.due_date,
+        updated_at: new Date().toISOString(),
+      }
+
       onUpdate(updatedCard)
-      setIsEditing(false)
       setShowLabelSelector(false)
       toast({
         title: "Cập nhật thành công",
@@ -140,7 +151,6 @@ export function CardDetailSidebar({
 
   const handleCancel = () => {
     setEditedCard(card)
-    setIsEditing(false)
     setShowLabelSelector(false)
   }
 
@@ -187,21 +197,7 @@ export function CardDetailSidebar({
           </div>
         )}
 
-        {/* Collapse/Expand Button */}
-        <div className="absolute -left-3 top-4 z-10">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-6 w-6 p-0 rounded-full bg-white shadow-md"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            {isCollapsed ? (
-              <ChevronLeft className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </Button>
-        </div>
+
 
         {!isCollapsed && (
           <>
@@ -210,14 +206,6 @@ export function CardDetailSidebar({
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">Chi tiết Card</h2>
                 <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
                   <Button variant="ghost" size="sm" onClick={onClose}>
                     <X className="h-4 w-4" />
                   </Button>
@@ -229,41 +217,29 @@ export function CardDetailSidebar({
             <div className="p-4 space-y-4 overflow-y-auto h-full">
               {/* Title Section */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Tiêu đề</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedCard?.title || ""}
-                    onChange={(e) =>
-                      setEditedCard(prev => prev ? { ...prev, title: e.target.value } : null)
-                    }
-                    className="text-sm"
-                    placeholder="Nhập tiêu đề..."
-                  />
-                ) : (
-                  <h3 className="text-base font-medium text-gray-900 leading-tight">
-                    {card.title}
-                  </h3>
-                )}
+                <LabelComponent className="text-sm font-medium text-gray-700">Tiêu đề</LabelComponent>
+                <Input
+                  value={editedCard?.title || ""}
+                  onChange={(e) =>
+                    setEditedCard(prev => prev ? { ...prev, title: e.target.value } : null)
+                  }
+                  className="text-sm"
+                  placeholder="Nhập tiêu đề..."
+                />
               </div>
 
               {/* Description Section */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Mô tả</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={editedCard?.description || ""}
-                    onChange={(e) =>
-                      setEditedCard(prev => prev ? { ...prev, description: e.target.value } : null)
-                    }
-                    placeholder="Thêm mô tả..."
-                    rows={4}
-                    className="text-sm resize-none"
-                  />
-                ) : (
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {card.description || "Chưa có mô tả"}
-                  </p>
-                )}
+                <LabelComponent className="text-sm font-medium text-gray-700">Mô tả</LabelComponent>
+                <Textarea
+                  value={editedCard?.description || ""}
+                  onChange={(e) =>
+                    setEditedCard(prev => prev ? { ...prev, description: e.target.value } : null)
+                  }
+                  placeholder="Thêm mô tả..."
+                  rows={4}
+                  className="text-sm resize-none"
+                />
               </div>
 
               <Separator />
@@ -272,9 +248,9 @@ export function CardDetailSidebar({
               <div className="grid grid-cols-2 gap-4">
                 {/* List */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <LabelComponent className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Danh sách
-                  </Label>
+                  </LabelComponent>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                     <span className="text-sm text-gray-700">{currentList?.title}</span>
@@ -283,62 +259,47 @@ export function CardDetailSidebar({
 
                 {/* Priority */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <LabelComponent className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Độ ưu tiên
-                  </Label>
-                  {isEditing ? (
-                    <Select
-                      value={editedCard?.priority || "medium"}
-                      onValueChange={(value) =>
-                        setEditedCard(prev => prev ? { ...prev, priority: value as any } : null)
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Thấp</SelectItem>
-                        <SelectItem value="medium">Trung bình</SelectItem>
-                        <SelectItem value="high">Cao</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge
-                      variant={
-                        card.priority === "high" ? "destructive" :
-                        card.priority === "medium" ? "default" : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {card.priority === "high" ? "Cao" :
-                       card.priority === "medium" ? "Trung bình" : "Thấp"}
-                    </Badge>
-                  )}
+                  </LabelComponent>
+                  <Select
+                    value={editedCard?.priority || "medium"}
+                    onValueChange={(value) =>
+                      setEditedCard(prev => prev ? { ...prev, priority: value as any } : null)
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Thấp</SelectItem>
+                      <SelectItem value="medium">Trung bình</SelectItem>
+                      <SelectItem value="high">Cao</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {/* Labels Section - Compact */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <LabelComponent className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Nhãn
-                  </Label>
-                  {isEditing && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowLabelSelector(!showLabelSelector)}
-                      className="h-6 px-2 text-xs"
-                    >
-                      {showLabelSelector ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                    </Button>
-                  )}
+                  </LabelComponent>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLabelSelector(!showLabelSelector)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    {showLabelSelector ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  </Button>
                 </div>
                 
                 {/* Selected Labels Display */}
                 <div className="flex flex-wrap gap-1">
-                  {(isEditing ? editedSelectedLabels : selectedLabels).length > 0 ? (
-                    (isEditing ? editedSelectedLabels : selectedLabels).map((label) => (
+                  {editedSelectedLabels.length > 0 ? (
+                    editedSelectedLabels.map((label) => (
                       <Badge
                         key={label.id}
                         style={{ backgroundColor: label.color }}
@@ -353,9 +314,9 @@ export function CardDetailSidebar({
                 </div>
 
                 {/* Label Selector */}
-                {isEditing && showLabelSelector && (
+                {showLabelSelector && (
                   <div className="space-y-2 p-3 bg-gray-50 rounded-md">
-                    <Label className="text-xs font-medium text-gray-600">Chọn nhãn</Label>
+                    <LabelComponent className="text-xs font-medium text-gray-600">Chọn nhãn</LabelComponent>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
                       {labels.map((label) => (
                         <div
@@ -382,26 +343,17 @@ export function CardDetailSidebar({
 
               {/* Due Date */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <LabelComponent className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Hạn chót
-                </Label>
-                {isEditing ? (
-                  <Input
-                    type="datetime-local"
-                    value={editedCard?.due_date ? editedCard.due_date.slice(0, 16) : ""}
-                    onChange={(e) =>
-                      setEditedCard(prev => prev ? { ...prev, due_date: e.target.value } : null)
-                    }
-                    className="text-xs"
-                  />
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-3 w-3 text-gray-400" />
-                    <span className="text-sm text-gray-600">
-                      {card.due_date ? new Date(card.due_date).toLocaleDateString() : "Chưa có"}
-                    </span>
-                  </div>
-                )}
+                </LabelComponent>
+                <Input
+                  type="datetime-local"
+                  value={editedCard?.due_date ? editedCard.due_date.slice(0, 16) : ""}
+                  onChange={(e) =>
+                    setEditedCard(prev => prev ? { ...prev, due_date: e.target.value } : null)
+                  }
+                  className="text-xs"
+                />
               </div>
 
               <Separator />
@@ -419,16 +371,11 @@ export function CardDetailSidebar({
               </div>
 
               {/* Action Buttons */}
-              {isEditing && (
-                <div className="flex space-x-2 pt-4">
-                  <Button onClick={handleCancel} variant="outline" size="sm" className="flex-1">
-                    Hủy
-                  </Button>
-                  <Button onClick={handleSave} disabled={isSaving} size="sm" className="flex-1">
-                    {isSaving ? "Đang lưu..." : "Lưu"}
-                  </Button>
-                </div>
-              )}
+              <div className="flex justify-end pt-4">
+                <Button onClick={handleSave} disabled={isSaving} size="sm">
+                  {isSaving ? "Đang lưu..." : "Lưu"}
+                </Button>
+              </div>
             </div>
           </>
         )}
