@@ -249,8 +249,6 @@ class ApiClient {
     page?: number
     limit?: number
   }): Promise<GetCardResponse> {
-    console.log(`🃏 GET CARDS API CALL`)
-    console.log(`📝 Params:`, params)
     const searchParams = new URLSearchParams()
     if (params?.ids) searchParams.append("ids", params.ids)
     if (params?.list_id) searchParams.append("list_id", params.list_id)
@@ -301,9 +299,6 @@ class ApiClient {
       limit?: number
     },
   ): Promise<GetCardActivitiesResponse> {
-    console.log(`🃏 GET CARD ACTIVITIES API CALL`)
-    console.log(`📝 Card ID:`, cardId)
-    console.log(`📝 Params:`, params)
     const searchParams = new URLSearchParams()
     searchParams.append("card_id", cardId)
     if (params?.page) searchParams.append("page", params.page.toString())
@@ -320,8 +315,6 @@ class ApiClient {
     page?: number
     limit?: number
   }): Promise<GetLabelResponse> {
-    console.log(`🏷️ GET LABELS API CALL`)
-    console.log(`📝 Params:`, params)
     const searchParams = new URLSearchParams()
     if (params?.ids) searchParams.append("ids", params.ids)
     if (params?.label_id) searchParams.append("label_id", params.label_id)
@@ -334,8 +327,6 @@ class ApiClient {
   }
 
   async createLabel(data: CreateLabelRequest): Promise<Label> {
-    console.log(`🏷️ CREATE LABEL API CALL`)
-    console.log(`📝 Label Data:`, data)
     return this.request<Label>("/labels", {
       method: "POST",
       body: JSON.stringify(data),

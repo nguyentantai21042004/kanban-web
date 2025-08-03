@@ -10,6 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import type { Card, CardPriority, Label as LabelType, List } from "@/lib/types"
 import { X, Loader2, Calendar, Tag } from "lucide-react"
 
@@ -49,33 +57,54 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [selectedListTitle, setSelectedListTitle] = useState("")
+  const [showExitWarning, setShowExitWarning] = useState(false)
+  const [originalFormData, setOriginalFormData] = useState<CardFormData | null>(null)
 
   useEffect(() => {
     if (isOpen) {
       if (card) {
         // Edit mode
-        setFormData({
+        const initialData = {
           title: card.title,
           description: card.description || "",
           list_id: card.list_id,
           priority: card.priority,
           labels: card.labels || [],
           due_date: card.due_date ? card.due_date.split("T")[0] : "",
-        })
+        }
+        setFormData(initialData)
+        setOriginalFormData(initialData)
       } else {
         // Create mode
-        setFormData({
+        const selectedListId = defaultListId || lists[0]?.id || ""
+        const initialData = {
           title: "",
           description: "",
-          list_id: defaultListId || lists[0]?.id || "",
+          list_id: selectedListId,
           priority: undefined,
           labels: [],
           due_date: "",
-        })
+        }
+        setFormData(initialData)
+        setOriginalFormData(initialData)
       }
       setError("")
+      setShowExitWarning(false)
     }
   }, [isOpen, card, defaultListId, lists])
+
+  // Update list_id when defaultListId changes and we're in create mode
+  useEffect(() => {
+    if (isOpen && !card && defaultListId && lists.length > 0) {
+      const selectedList = lists.find(list => list.id === defaultListId)
+      setFormData(prev => ({
+        ...prev,
+        list_id: defaultListId
+      }))
+      setSelectedListTitle(selectedList?.title || "")
+    }
+  }, [defaultListId, lists, isOpen, card])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,20 +136,54 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     }))
   }
 
+  // Check if form has unsaved changes
+  const hasUnsavedChanges = () => {
+    if (!originalFormData) return false
+    
+    return (
+      formData.title !== originalFormData.title ||
+      formData.description !== originalFormData.description ||
+      formData.list_id !== originalFormData.list_id ||
+      formData.priority !== originalFormData.priority ||
+      JSON.stringify(formData.labels) !== JSON.stringify(originalFormData.labels) ||
+      formData.due_date !== originalFormData.due_date
+    )
+  }
+
+  // Handle close with warning
+  const handleClose = () => {
+    if (hasUnsavedChanges()) {
+      setShowExitWarning(true)
+    } else {
+      onClose()
+    }
+  }
+
+  // Confirm exit without saving
+  const confirmExit = () => {
+    setShowExitWarning(false)
+    onClose()
+  }
+
+  // Cancel exit and continue editing
+  const cancelExit = () => {
+    setShowExitWarning(false)
+  }
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
-      <div className="flex-1 bg-black/20" onClick={onClose} />
+      <div className="flex-1 bg-black/20 transition-opacity duration-700 ease-in-out" onClick={handleClose} />
 
       {/* Form Panel */}
-      <div className="w-96 bg-white shadow-xl border-l animate-in slide-in-from-right duration-300">
+      <div className="w-96 bg-white shadow-xl border-l transition-all duration-700 ease-in-out animate-in slide-in-from-right">
         <form onSubmit={handleSubmit} className="h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <h2 className="text-lg font-semibold">{card ? "Chỉnh sửa card" : "Tạo card mới"}</h2>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={handleClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -137,6 +200,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 placeholder="Nhập tiêu đề card..."
                 required
                 disabled={isSubmitting}
+                style={{
+                  borderColor: '#e5e7eb',
+                  outline: 'none',
+                }}
+                className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
               />
             </div>
 
@@ -148,8 +216,13 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Mô tả chi tiết về card..."
-                rows={4}
+                rows={3}
                 disabled={isSubmitting}
+                style={{
+                  borderColor: '#e5e7eb',
+                  outline: 'none',
+                }}
+                className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
               />
             </div>
 
@@ -157,12 +230,21 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             <div className="space-y-2">
               <Label>List</Label>
               <Select
+                key={formData.list_id} // Force re-render when list_id changes
                 value={formData.list_id}
                 onValueChange={(value) => setFormData((prev) => ({ ...prev, list_id: value }))}
                 disabled={isSubmitting}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn list" />
+                <SelectTrigger 
+                  style={{
+                    borderColor: '#e5e7eb',
+                    outline: 'none',
+                  }}
+                  className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                >
+                  <SelectValue placeholder="Chọn list">
+                    {selectedListTitle || (formData.list_id && lists.find(list => list.id === formData.list_id)?.title)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {lists.map((list) => (
@@ -187,7 +269,13 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 }
                 disabled={isSubmitting}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  style={{
+                    borderColor: '#e5e7eb',
+                    outline: 'none',
+                  }}
+                  className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                >
                   <SelectValue placeholder="Chọn độ ưu tiên" />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,6 +301,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 value={formData.due_date}
                 onChange={(e) => setFormData((prev) => ({ ...prev, due_date: e.target.value }))}
                 disabled={isSubmitting}
+                style={{
+                  borderColor: '#e5e7eb',
+                  outline: 'none',
+                }}
+                className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
               />
             </div>
 
@@ -272,7 +365,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
               type="button"
               variant="outline"
               className="w-full bg-transparent"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
             >
               Hủy
@@ -280,6 +373,26 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           </div>
         </form>
       </div>
+
+      {/* Exit Warning Dialog */}
+      <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thay đổi chưa được lưu</DialogTitle>
+            <DialogDescription>
+              Bạn có thay đổi chưa được lưu. Bạn có chắc chắn muốn rời khỏi mà không lưu thay đổi?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelExit}>
+              Tiếp tục chỉnh sửa
+            </Button>
+            <Button variant="destructive" onClick={confirmExit}>
+              Rời khỏi không lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

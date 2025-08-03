@@ -47,10 +47,11 @@ export default function ProfilePage() {
     setIsSaving(true)
 
     try {
-      const updatedProfile = await apiClient.updateProfile({
+      const response = await apiClient.updateProfile({
         full_name: fullName,
         avatar_url: avatarUrl || undefined,
       })
+      const updatedProfile = (response as any).data || response
 
       setProfile(updatedProfile)
       setMessage("Cập nhật thành công!")

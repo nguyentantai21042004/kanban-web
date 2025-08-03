@@ -66,15 +66,23 @@ export function CardDetailSidebar({
 
   // Handle resize
   useEffect(() => {
+    let animationFrameId: number
+
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && resizeRef.current) {
-        const newWidth = window.innerWidth - e.clientX
-        setSidebarWidth(Math.max(350, Math.min(1000, newWidth))) // Min 350px, Max 1000px
+        // Use requestAnimationFrame for smooth resizing
+        animationFrameId = requestAnimationFrame(() => {
+          const newWidth = window.innerWidth - e.clientX
+          setSidebarWidth(Math.max(350, Math.min(1000, newWidth))) // Min 350px, Max 1000px
+        })
       }
     }
 
     const handleMouseUp = () => {
       setIsResizing(false)
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+      }
     }
 
     if (isResizing) {
@@ -85,6 +93,9 @@ export function CardDetailSidebar({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+      }
     }
   }, [isResizing])
 
@@ -173,13 +184,13 @@ export function CardDetailSidebar({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-700 ease-in-out"
         onClick={onClose}
       />
       
       {/* Sidebar */}
       <div 
-        className={`fixed inset-y-0 right-0 bg-white border-l border-gray-200 shadow-xl z-50 overflow-hidden transition-all duration-300 ${
+        className={`fixed inset-y-0 right-0 bg-white border-l border-gray-200 shadow-xl z-50 overflow-hidden transition-all duration-700 ease-in-out ${
           isCollapsed ? 'w-16' : ''
         }`}
         style={{ width: isCollapsed ? '64px' : `${sidebarWidth}px` }}
@@ -188,7 +199,7 @@ export function CardDetailSidebar({
         {!isCollapsed && (
           <div
             ref={resizeRef}
-            className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize"
+            className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize transition-colors duration-200"
             onMouseDown={() => setIsResizing(true)}
           >
             <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -223,7 +234,7 @@ export function CardDetailSidebar({
                   onChange={(e) =>
                     setEditedCard(prev => prev ? { ...prev, title: e.target.value } : null)
                   }
-                  className="text-sm"
+                  className="text-sm border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                   placeholder="Nhập tiêu đề..."
                 />
               </div>
@@ -237,8 +248,8 @@ export function CardDetailSidebar({
                     setEditedCard(prev => prev ? { ...prev, description: e.target.value } : null)
                   }
                   placeholder="Thêm mô tả..."
-                  rows={4}
-                  className="text-sm resize-none"
+                  rows={3}
+                  className="text-sm resize-none border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                 />
               </div>
 
@@ -268,7 +279,7 @@ export function CardDetailSidebar({
                       setEditedCard(prev => prev ? { ...prev, priority: value as any } : null)
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 text-xs border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -352,7 +363,7 @@ export function CardDetailSidebar({
                   onChange={(e) =>
                     setEditedCard(prev => prev ? { ...prev, due_date: e.target.value } : null)
                   }
-                  className="text-xs"
+                  className="text-xs border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                 />
               </div>
 
@@ -371,7 +382,7 @@ export function CardDetailSidebar({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-start pt-4">
                 <Button onClick={handleSave} disabled={isSaving} size="sm">
                   {isSaving ? "Đang lưu..." : "Lưu"}
                 </Button>

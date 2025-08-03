@@ -125,7 +125,7 @@ export default function BoardPage() {
   const connectWebSocket = async () => {
     try {
       await wsClient.connect(boardId)
-
+      
       // Listen for real-time updates
       wsClient.on("card_created", handleCardCreated)
       wsClient.on("card_updated", handleCardUpdated)
@@ -135,19 +135,22 @@ export default function BoardPage() {
       wsClient.on("list_updated", handleListUpdated)
       wsClient.on("list_deleted", handleListDeleted)
     } catch (error) {
-      console.error("WebSocket connection failed:", error)
+      console.error("❌ WebSocket connection failed:", error)
     }
   }
 
   // WebSocket event handlers
   const handleCardCreated = useCallback(
     (card: Card) => {
+      console.log("📥 Received card_created WebSocket event:", card)
       setCards((prev) => {
         // Check if card already exists to prevent duplicates
         const exists = prev.some((c) => c.id === card.id)
         if (exists) {
+          console.log("⚠️ Card already exists, skipping:", card.id)
           return prev
         }
+        console.log("✅ Adding card from WebSocket:", card)
         return [...prev, card]
       })
       toast({
@@ -206,12 +209,14 @@ export default function BoardPage() {
 
   // Card operations
   const handleAddCard = (listId: string) => {
+    console.log("➕ Opening add card form for list:", listId)
     setDefaultListId(listId)
     setEditingCard(null)
     setIsCardFormOpen(true)
   }
 
   const handleEditCard = (card: Card) => {
+    console.log("✏️ Opening edit card form for card:", card.id)
     setEditingCard(card)
     setDefaultListId("")
     setIsCardFormOpen(true)
@@ -221,10 +226,11 @@ export default function BoardPage() {
     try {
       if (editingCard) {
         // Update existing card
-        const updatedCard = await apiClient.updateCard({
+        const response = await apiClient.updateCard({
           id: editingCard.id,
           ...data,
         })
+        const updatedCard = (response as any).data || response
         setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
         
         // Note: Don't send WebSocket event here because we already updated the card in state
@@ -236,11 +242,32 @@ export default function BoardPage() {
         })
       } else {
         // Create new card
-        const newCard = await apiClient.createCard(data)
-        setCards((prev) => [...prev, newCard])
+        const response = await apiClient.createCard(data)
+        console.log("✅ Card created successfully:", response)
         
-        // Note: Don't send WebSocket event here because we already added the card to state
-        // The WebSocket event will be handled by handleCardCreated if other users create cards
+        // Extract card data from response
+        const newCard = (response as any).data || response
+        console.log("📝 Extracted card data:", newCard)
+        
+        // Add to state immediately for optimistic update
+        setCards((prev) => {
+          console.log("📝 Adding card to state:", newCard)
+          return [...prev, newCard]
+        })
+        
+        // Send WebSocket event for real-time updates
+        if (wsClient.isConnected()) {
+          console.log("📤 Sending WebSocket card_created event")
+          wsClient.send({
+            type: "card_created",
+            data: newCard,
+            board_id: boardId,
+            user_id: user?.id || "",
+            timestamp: new Date().toISOString()
+          })
+        } else {
+          console.log("❌ WebSocket not connected")
+        }
         
         toast({
           title: "Tạo thành công",
@@ -253,9 +280,14 @@ export default function BoardPage() {
   }
 
   const handleDeleteCard = async (cardId: string) => {
+    console.log("🗑️ Deleting card:", cardId)
     try {
       await apiClient.deleteCards([cardId])
-      setCards((prev) => prev.filter((c) => c.id !== cardId))
+      console.log("✅ Card deleted from API")
+      setCards((prev) => {
+        console.log("📝 Removing card from state:", cardId)
+        return prev.filter((c) => c.id !== cardId)
+      })
       
       // Note: Don't send WebSocket event here because we already removed the card from state
       // The WebSocket event will be handled by handleCardDeleted if other users delete cards
@@ -265,6 +297,7 @@ export default function BoardPage() {
         description: "Card đã được xóa",
       })
     } catch (error: any) {
+      console.error("❌ Delete card error:", error)
       toast({
         title: "Lỗi",
         description: "Không thể xóa card",
@@ -280,11 +313,12 @@ export default function BoardPage() {
 
     try {
       setIsCreatingList(true)
-      const newList = await apiClient.createList({
+      const response = await apiClient.createList({
         board_id: boardId,
         title: newListTitle,
         position: lists.length + 1,
       })
+      const newList = (response as any).data || response
 
       // Use the title from form instead of API response (in case API returns "string")
       const listWithCorrectTitle = {
@@ -307,7 +341,6 @@ export default function BoardPage() {
         description: "List mới đã được tạo",
       })
     } catch (error: any) {
-      console.error(`❌ Create list error:`, error)
       toast({
         title: "Lỗi",
         description: "Không thể tạo list",
@@ -320,11 +353,12 @@ export default function BoardPage() {
 
   const handleEditList = async (list: List) => {
     try {
-      const updatedList = await apiClient.updateList({
+      const response = await apiClient.updateList({
         id: list.id,
         title: list.title,
         position: list.position,
       })
+      const updatedList = (response as any).data || response
 
       setLists((prev) => prev.map((l) => (l.id === updatedList.id ? updatedList : l)))
       
@@ -405,11 +439,12 @@ export default function BoardPage() {
       })
 
       // Call API to update server - let backend calculate the actual position
-      const updatedCard = await apiClient.moveCard({
+      const response = await apiClient.moveCard({
         id: draggedCard.id,
         list_id: listId,
         position: 0, // Send 0 to let backend calculate the best position
       })
+      const updatedCard = (response as any).data || response
 
       // Update with server response (which has the actual calculated position)
       setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
