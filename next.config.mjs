@@ -19,7 +19,7 @@ const nextConfig = {
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://kanban.ngtantai.pro',
     },
 
-    // Headers for security
+    // Headers for security and favicon
     async headers() {
         return [{
             source: '/(.*)',
@@ -40,7 +40,25 @@ const nextConfig = {
                     value: 'strict-origin-when-cross-origin',
                 },
             ],
-        }, ]
+        }, {
+            source: '/favicon.ico',
+            headers: [{
+                key: 'Cache-Control',
+                value: 'public, max-age=31536000, immutable',
+            }],
+        }, {
+            source: '/apple-touch-icon.png',
+            headers: [{
+                key: 'Cache-Control',
+                value: 'public, max-age=31536000, immutable',
+            }],
+        }, {
+            source: '/android-chrome-:size.png',
+            headers: [{
+                key: 'Cache-Control',
+                value: 'public, max-age=31536000, immutable',
+            }],
+        }]
     },
 
     // Redirects
