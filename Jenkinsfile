@@ -66,7 +66,7 @@ pipeline {
                         env.DOCKER_WEB_IMAGE_NAME = "${env.REGISTRY_DOMAIN_NAME}/${env.ENVIRONMENT}/${env.SERVICE}:${timestamp}"
 
                         // Build from root directory with root Dockerfile
-                        sh "docker build -t ${env.DOCKER_WEB_IMAGE_NAME} -f ${WORKSPACE}/Dockerfile ${WORKSPACE}"
+                        sh "docker build --no-cache -t ${env.DOCKER_WEB_IMAGE_NAME} -f ${WORKSPACE}/Dockerfile ${WORKSPACE}"
 
                         echo "Successfully built WEB: ${env.DOCKER_WEB_IMAGE_NAME}"                    
                     } catch (Exception e) {
