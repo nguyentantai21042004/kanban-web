@@ -1,4 +1,5 @@
 import type { WebSocketMessage, WebSocketAuthMessage } from "./types"
+import { Config } from "./api/utils/config"
 
 export class WebSocketClient {
   private ws: WebSocket | null = null
@@ -41,9 +42,8 @@ export class WebSocketClient {
         return
       }
 
-      const wsUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
-        : `ws://localhost:8080/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
+      // Use centralized config for WebSocket URL
+      const wsUrl = Config.getWebSocketUrl(boardId, token)
       console.log(`🔗 WebSocket URL:`, wsUrl)
 
       try {

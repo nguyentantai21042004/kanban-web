@@ -1,5 +1,6 @@
 import { logger } from './logger'
 import { AuthUtils } from './auth'
+import { Config } from './config'
 
 export interface RequestOptions extends RequestInit {
   skipAuth?: boolean
@@ -7,11 +8,9 @@ export interface RequestOptions extends RequestInit {
 }
 
 export class RequestUtils {
-  private static readonly API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
-  // private static readonly API_BASE_URL = "http://localhost:8080/api/v1"
 
   static async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.API_BASE_URL}${endpoint}`
+    const url = Config.getApiUrl(endpoint)
     const config: RequestInit = {
       headers: options.skipAuth ? {} : AuthUtils.getAuthHeaders(),
       ...options,

@@ -26,7 +26,7 @@ spec:
       - name: harbor-secret
       containers:
       - name: kanban-web
-        image: harbor.ngtantai.pro/kanban/kanban-web:latest
+        image: harbor.ngtantai.pro/kanban/kanban-web:250803-184842
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
@@ -41,11 +41,25 @@ spec:
             cpu: "500m"
         env:
         - name: NODE_ENV
-          value: "production"
+          valueFrom:
+            configMapKeyRef:
+              name: kanban-web-config
+              key: NODE_ENV
         - name: NEXT_PUBLIC_API_URL
-          value: "https://kanban-api.ngtantai.pro"
+          valueFrom:
+            configMapKeyRef:
+              name: kanban-web-config
+              key: NEXT_PUBLIC_API_URL
         - name: NEXT_PUBLIC_WEBSOCKET_URL
-          value: "https://kanban-api.ngtantai.pro"
+          valueFrom:
+            configMapKeyRef:
+              name: kanban-web-config
+              key: NEXT_PUBLIC_WEBSOCKET_URL
+        - name: NEXT_PUBLIC_APP_URL
+          valueFrom:
+            configMapKeyRef:
+              name: kanban-web-config
+              key: NEXT_PUBLIC_APP_URL
         - name: CONTAINER_NAME
           value: "kanban-web"
         - name: KUBERNETES_NAMESPACE
@@ -123,7 +137,7 @@ data:
   NODE_ENV: "production"
   NEXT_PUBLIC_API_URL: "https://kanban-api.ngtantai.pro"
   NEXT_PUBLIC_APP_URL: "https://kanban.ngtantai.pro"
-  NEXT_PUBLIC_WEBSOCKET_URL: "https://kanban.ngtantai.pro"
+  NEXT_PUBLIC_WEBSOCKET_URL: "wss://kanban-api.ngtantai.pro"
 
 ---
 apiVersion: autoscaling/v2

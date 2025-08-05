@@ -65,7 +65,7 @@ const nextConfig = {
     async redirects() {
         return [{
             source: '/api/:path*',
-            destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+            destination: 'https://kanban-api.ngtantai.pro/api/:path*',
             permanent: true,
         }, ]
     },
