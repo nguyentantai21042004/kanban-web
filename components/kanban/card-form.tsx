@@ -18,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { Card, CardPriority, Label as LabelType, List } from "@/lib/types"
-import { X, Loader2, Calendar, Tag } from "lucide-react"
+import type { Card, CardPriority, Label as LabelType, List, ChecklistItem } from "@/lib/types"
+import { X, Loader2, Calendar, Tag, User, Clock, FileText, CheckSquare, Plus, Minus } from "lucide-react"
 
 interface CardFormProps {
   isOpen: boolean
@@ -29,6 +29,7 @@ interface CardFormProps {
   lists: List[]
   labels: LabelType[]
   defaultListId?: string
+  users?: Array<{ id: string; full_name: string }>
 }
 
 export interface CardFormData {
@@ -38,6 +39,11 @@ export interface CardFormData {
   priority?: CardPriority
   labels?: string[]
   due_date?: string
+  assigned_to?: string
+  estimated_hours?: number
+  start_date?: string
+  tags?: string[]
+  checklist?: ChecklistItem[]
 }
 
 const priorityOptions = [
@@ -46,7 +52,7 @@ const priorityOptions = [
   { value: "high", label: "Cao", color: "text-red-600" },
 ]
 
-export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defaultListId }: CardFormProps) {
+export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defaultListId, users = [] }: CardFormProps) {
   const [formData, setFormData] = useState<CardFormData>({
     title: "",
     description: "",
@@ -54,12 +60,19 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     priority: undefined,
     labels: [],
     due_date: "",
+    assigned_to: "",
+    estimated_hours: undefined,
+    start_date: "",
+    tags: [],
+    checklist: [],
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [selectedListTitle, setSelectedListTitle] = useState("")
   const [showExitWarning, setShowExitWarning] = useState(false)
   const [originalFormData, setOriginalFormData] = useState<CardFormData | null>(null)
+  const [newTag, setNewTag] = useState("")
+  const [newChecklistItem, setNewChecklistItem] = useState("")
 
   useEffect(() => {
     if (isOpen) {
@@ -72,6 +85,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           priority: card.priority,
           labels: card.labels || [],
           due_date: card.due_date ? card.due_date.split("T")[0] : "",
+          assigned_to: card.assigned_to || "",
+          estimated_hours: card.estimated_hours,
+          start_date: card.start_date ? card.start_date.split("T")[0] : "",
+          tags: card.tags || [],
+          checklist: card.checklist || [],
         }
         setFormData(initialData)
         setOriginalFormData(initialData)
@@ -85,6 +103,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           priority: undefined,
           labels: [],
           due_date: "",
+          assigned_to: "",
+          estimated_hours: undefined,
+          start_date: "",
+          tags: [],
+          checklist: [],
         }
         setFormData(initialData)
         setOriginalFormData(initialData)
@@ -115,7 +138,10 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
       const submitData = {
         ...formData,
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
+        start_date: formData.start_date ? new Date(formData.start_date).toISOString() : undefined,
         labels: formData.labels?.length ? formData.labels : undefined,
+        tags: formData.tags?.length ? formData.tags : undefined,
+        checklist: formData.checklist?.length ? formData.checklist : undefined,
       }
 
       await onSubmit(submitData)
@@ -136,6 +162,56 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     }))
   }
 
+  const handleTagAdd = () => {
+    if (newTag.trim() && !formData.tags?.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...(prev.tags || []), newTag.trim()]
+      }))
+      setNewTag("")
+    }
+  }
+
+  const handleTagRemove = (tag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags?.filter(t => t !== tag) || []
+    }))
+  }
+
+  const handleChecklistAdd = () => {
+    if (newChecklistItem.trim()) {
+      const newItem: ChecklistItem = {
+        id: `temp-${Date.now()}`,
+        title: newChecklistItem.trim(),
+        completed: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      setFormData(prev => ({
+        ...prev,
+        checklist: [...(prev.checklist || []), newItem]
+      }))
+      setNewChecklistItem("")
+    }
+  }
+
+  const handleChecklistToggle = (itemId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      checklist: prev.checklist?.map(item => 
+        item.id === itemId ? { ...item, completed: !item.completed } : item
+      ) || []
+    }))
+  }
+
+  const handleChecklistRemove = (itemId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      checklist: prev.checklist?.filter(item => item.id !== itemId) || []
+    }))
+  }
+
   // Check if form has unsaved changes
   const hasUnsavedChanges = () => {
     if (!originalFormData) return false
@@ -146,7 +222,12 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
       formData.list_id !== originalFormData.list_id ||
       formData.priority !== originalFormData.priority ||
       JSON.stringify(formData.labels) !== JSON.stringify(originalFormData.labels) ||
-      formData.due_date !== originalFormData.due_date
+      formData.due_date !== originalFormData.due_date ||
+      formData.assigned_to !== originalFormData.assigned_to ||
+      formData.estimated_hours !== originalFormData.estimated_hours ||
+      formData.start_date !== originalFormData.start_date ||
+      JSON.stringify(formData.tags) !== JSON.stringify(originalFormData.tags) ||
+      JSON.stringify(formData.checklist) !== JSON.stringify(originalFormData.checklist)
     )
   }
 
@@ -178,7 +259,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
       <div className="flex-1 bg-black/20 transition-opacity duration-700 ease-in-out" onClick={handleClose} />
 
       {/* Form Panel */}
-      <div className="w-96 bg-white shadow-xl border-l transition-all duration-700 ease-in-out animate-in slide-in-from-right">
+      <div className="w-[500px] bg-white shadow-xl border-l transition-all duration-700 ease-in-out animate-in slide-in-from-right">
         <form onSubmit={handleSubmit} className="h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
@@ -256,6 +337,34 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
               </Select>
             </div>
 
+            {/* Assignment */}
+            <div className="space-y-2">
+              <Label>Người được gán</Label>
+              <Select
+                value={formData.assigned_to}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, assigned_to: value }))}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger 
+                  style={{
+                    borderColor: '#e5e7eb',
+                    outline: 'none',
+                  }}
+                  className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                >
+                  <SelectValue placeholder="Chọn người được gán" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Không gán</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Priority */}
             <div className="space-y-2">
               <Label>Độ ưu tiên</Label>
@@ -289,6 +398,52 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
               </Select>
             </div>
 
+            {/* Time Tracking */}
+            <div className="space-y-2">
+              <Label htmlFor="estimated_hours">
+                <Clock className="inline mr-2 h-4 w-4" />
+                Giờ ước tính
+              </Label>
+              <Input
+                id="estimated_hours"
+                type="number"
+                step="0.5"
+                min="0"
+                value={formData.estimated_hours || ""}
+                onChange={(e) => setFormData((prev) => ({ 
+                  ...prev, 
+                  estimated_hours: e.target.value ? parseFloat(e.target.value) : undefined 
+                }))}
+                placeholder="0.0"
+                disabled={isSubmitting}
+                style={{
+                  borderColor: '#e5e7eb',
+                  outline: 'none',
+                }}
+                className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+
+            {/* Start Date */}
+            <div className="space-y-2">
+              <Label htmlFor="start_date">
+                <Calendar className="inline mr-2 h-4 w-4" />
+                Ngày bắt đầu
+              </Label>
+              <Input
+                id="start_date"
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData((prev) => ({ ...prev, start_date: e.target.value }))}
+                disabled={isSubmitting}
+                style={{
+                  borderColor: '#e5e7eb',
+                  outline: 'none',
+                }}
+                className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+
             {/* Due Date */}
             <div className="space-y-2">
               <Label htmlFor="due_date">
@@ -307,6 +462,46 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 }}
                 className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
               />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2">
+              <Label>
+                <Tag className="inline mr-2 h-4 w-4" />
+                Tags
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Thêm tag..."
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleTagAdd())}
+                  style={{
+                    borderColor: '#e5e7eb',
+                    outline: 'none',
+                  }}
+                  className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                />
+                <Button type="button" onClick={handleTagAdd} size="sm">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.tags && formData.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {formData.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleTagRemove(tag)}
+                        className="ml-1 hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Labels */}
@@ -339,6 +534,55 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="space-y-2">
+              <Label>
+                <CheckSquare className="inline mr-2 h-4 w-4" />
+                Checklist
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  placeholder="Thêm item..."
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleChecklistAdd())}
+                  style={{
+                    borderColor: '#e5e7eb',
+                    outline: 'none',
+                  }}
+                  className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                />
+                <Button type="button" onClick={handleChecklistAdd} size="sm">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.checklist && formData.checklist.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {formData.checklist.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={item.completed}
+                        onCheckedChange={() => handleChecklistToggle(item.id)}
+                        disabled={isSubmitting}
+                      />
+                      <span className={`flex-1 ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                        {item.title}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleChecklistRemove(item.id)}
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && (

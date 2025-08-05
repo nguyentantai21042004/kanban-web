@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log(`📝 Password:`, password ? "***" : "undefined")
     
     try {
-      const response = await apiClient.login({ username, password })
+      const response = await apiClient.auth.login({ username, password })
       console.log(`✅ Login successful:`, response)
 
       // Kiểm tra response format
@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     console.log(`🚪 AUTH CONTEXT: LOGOUT`)
     try {
-      await apiClient.logout()
+      await apiClient.auth.logout()
       console.log(`✅ Logout API call successful`)
     } catch (error) {
       console.error("❌ Logout API error:", error)

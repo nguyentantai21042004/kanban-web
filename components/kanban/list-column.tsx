@@ -14,6 +14,7 @@ interface ListColumnProps {
   list: List
   cards: CardType[]
   labels: Label[]
+  users?: Array<{ id: string; full_name: string; avatar_url?: string }>
   onAddCard: (listId: string) => void
   onEditCard: (card: CardType) => void
   onDeleteCard: (cardId: string) => void
@@ -35,6 +36,7 @@ export function ListColumn({
   list,
   cards,
   labels,
+  users = [],
   onAddCard,
   onEditCard,
   onDeleteCard,
@@ -202,6 +204,7 @@ export function ListColumn({
               <CardItem
                 card={card}
                 labels={labels}
+                users={users}
                 onEdit={onEditCard}
                 onDelete={onDeleteCard}
                 onDragStart={onDragStart}

@@ -20,7 +20,7 @@ import { CardForm, type CardFormData } from "@/components/kanban/card-form"
 import { CardDetailSidebar } from "@/components/kanban/card-detail-sidebar"
 import { useDragDrop } from "@/lib/use-drag-drop"
 import { useAuth } from "@/lib/auth-context"
-import { apiClient } from "@/lib/api"
+import { apiClient } from "@/lib/api/index"
 import { wsClient } from "@/lib/websocket"
 import type { Board, List, Card, Label } from "@/lib/types"
 import { ArrowLeft, Plus, Loader2, Trash2 } from "lucide-react"
@@ -37,6 +37,7 @@ export default function BoardPage() {
   const [lists, setLists] = useState<List[]>([])
   const [cards, setCards] = useState<Card[]>([])
   const [labels, setLabels] = useState<Label[]>([])
+  const [users, setUsers] = useState<Array<{ id: string; full_name: string; avatar_url?: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -104,16 +105,18 @@ export default function BoardPage() {
       setError("")
 
       const [boardData, listsData, cardsData, labelsData] = await Promise.all([
-        apiClient.getBoardById(boardId),
-        apiClient.getLists(),
-        apiClient.getCards(),
-        apiClient.getLabels(),
+        apiClient.boards.getBoardById(boardId),
+        apiClient.lists.getLists(),
+        apiClient.cards.getCards(),
+        apiClient.labels.getLabels(),
       ])
 
       setBoard(boardData)
       setLists(listsData.data?.items?.filter((list) => list.board_id === boardId) || [])
       setCards(cardsData.data?.items || [])
       setLabels(labelsData.data?.items?.filter((label) => label.board_id === boardId) || [])
+      // Remove users API call since endpoint doesn't exist
+      setUsers([])
     } catch (error: any) {
       setError("Không thể tải dữ liệu board")
       console.error("Load board error:", error)
@@ -136,6 +139,8 @@ export default function BoardPage() {
       wsClient.on("list_deleted", handleListDeleted)
     } catch (error) {
       console.error("❌ WebSocket connection failed:", error)
+      // Don't show error to user, just log it
+      // WebSocket is optional for the app to work
     }
   }
 
@@ -226,7 +231,7 @@ export default function BoardPage() {
     try {
       if (editingCard) {
         // Update existing card
-        const response = await apiClient.updateCard({
+        const response = await apiClient.cards.updateCard({
           id: editingCard.id,
           ...data,
         })
@@ -242,7 +247,7 @@ export default function BoardPage() {
         })
       } else {
         // Create new card
-        const response = await apiClient.createCard(data)
+        const response = await apiClient.cards.createCard(data)
         console.log("✅ Card created successfully:", response)
         
         // Extract card data from response
@@ -282,7 +287,7 @@ export default function BoardPage() {
   const handleDeleteCard = async (cardId: string) => {
     console.log("🗑️ Deleting card:", cardId)
     try {
-      await apiClient.deleteCards([cardId])
+      await apiClient.cards.deleteCards([cardId])
       console.log("✅ Card deleted from API")
       setCards((prev) => {
         console.log("📝 Removing card from state:", cardId)
@@ -313,7 +318,7 @@ export default function BoardPage() {
 
     try {
       setIsCreatingList(true)
-      const response = await apiClient.createList({
+      const response = await apiClient.lists.createList({
         board_id: boardId,
         title: newListTitle,
         position: lists.length + 1,
@@ -353,7 +358,7 @@ export default function BoardPage() {
 
   const handleEditList = async (list: List) => {
     try {
-      const response = await apiClient.updateList({
+      const response = await apiClient.lists.updateList({
         id: list.id,
         title: list.title,
         position: list.position,
@@ -375,7 +380,7 @@ export default function BoardPage() {
 
   const handleDeleteList = async (listId: string) => {
     try {
-      await apiClient.deleteLists([listId])
+      await apiClient.lists.deleteLists([listId])
       setLists((prev) => prev.filter((l) => l.id !== listId))
       setCards((prev) => prev.filter((c) => c.list_id !== listId))
       
@@ -399,7 +404,7 @@ export default function BoardPage() {
   const handleDeleteBoard = async () => {
     try {
       setIsDeletingBoard(true)
-      await apiClient.deleteBoards([boardId])
+      await apiClient.boards.deleteBoards([boardId])
       
       toast({
         title: "Xóa thành công",
@@ -439,7 +444,7 @@ export default function BoardPage() {
       })
 
       // Call API to update server - let backend calculate the actual position
-      const response = await apiClient.moveCard({
+      const response = await apiClient.cards.moveCard({
         id: draggedCard.id,
         list_id: listId,
         position: 0, // Send 0 to let backend calculate the best position
@@ -548,6 +553,7 @@ export default function BoardPage() {
               list={list}
               cards={cards.filter((card) => card.list_id === list.id)}
               labels={labels}
+              users={users}
               onAddCard={handleAddCard}
               onEditCard={handleEditCard}
               onDeleteCard={handleDeleteCard}
@@ -589,6 +595,7 @@ export default function BoardPage() {
         lists={lists}
         labels={labels}
         defaultListId={defaultListId}
+        users={users}
       />
 
       {/* Create List Dialog */}
@@ -646,6 +653,7 @@ export default function BoardPage() {
           setSelectedCard(null)
         }}
         onUpdate={handleCardUpdate}
+        users={users}
       />
 
       {/* Delete Board Dialog */}

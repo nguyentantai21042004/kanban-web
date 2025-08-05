@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth-context"
-import { apiClient } from "@/lib/api"
+import { apiClient } from "@/lib/api/index"
 import type { User } from "@/lib/types"
 import { Loader2, ArrowLeft, Save, LogOut } from "lucide-react"
 
@@ -29,7 +29,7 @@ export default function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      const profileData = await apiClient.getMyProfile()
+      const profileData = await apiClient.auth.getMyProfile()
       setProfile(profileData)
       setFullName(profileData.full_name)
       setAvatarUrl(profileData.avatar_url || "")
@@ -47,7 +47,7 @@ export default function ProfilePage() {
     setIsSaving(true)
 
     try {
-      const response = await apiClient.updateProfile({
+      const response = await apiClient.auth.updateProfile({
         full_name: fullName,
         avatar_url: avatarUrl || undefined,
       })

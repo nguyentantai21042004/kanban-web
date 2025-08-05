@@ -114,6 +114,36 @@ export interface GetListResponse {
 export type CardPriority = "low" | "medium" | "high"
 export type CardActionType = "created" | "moved" | "updated" | "commented"
 
+export interface ChecklistItem {
+  id: string
+  title: string
+  completed: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Attachment {
+  id: string
+  filename: string
+  original_name: string
+  file_size: number
+  mime_type: string
+  url: string
+  uploaded_by: string
+  created_at: string
+}
+
+export interface Comment {
+  id: string
+  card_id: string
+  content: string
+  created_by: string
+  parent_id?: string
+  replies?: Comment[]
+  created_at: string
+  updated_at: string
+}
+
 export interface Card {
   id: string
   title: string
@@ -123,6 +153,15 @@ export interface Card {
   priority?: CardPriority
   labels?: string[]
   due_date?: string
+  assigned_to?: string
+  estimated_hours?: number
+  actual_hours?: number
+  start_date?: string
+  completion_date?: string
+  tags?: string[]
+  checklist?: ChecklistItem[]
+  attachments?: Attachment[]
+  comments?: Comment[]
   is_archived: boolean
   created_at: string
   updated_at: string
@@ -136,6 +175,11 @@ export interface CreateCardRequest {
   priority?: CardPriority
   labels?: string[]
   due_date?: string
+  assigned_to?: string
+  estimated_hours?: number
+  start_date?: string
+  tags?: string[]
+  checklist?: ChecklistItem[]
 }
 
 export interface UpdateCardRequest {
@@ -145,6 +189,13 @@ export interface UpdateCardRequest {
   priority?: CardPriority
   labels?: string[]
   due_date?: string
+  assigned_to?: string
+  estimated_hours?: number
+  actual_hours?: number
+  start_date?: string
+  completion_date?: string
+  tags?: string[]
+  checklist?: ChecklistItem[]
 }
 
 export interface MoveCardRequest {
