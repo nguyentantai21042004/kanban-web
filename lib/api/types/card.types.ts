@@ -1,3 +1,5 @@
+export type CardPriority = "low" | "medium" | "high"
+
 export interface Card {
   id: string
   title: string
@@ -5,6 +7,7 @@ export interface Card {
   list_id: string
   board_id: string
   position: number
+  priority?: CardPriority
   assigned_to?: string
   due_date?: string
   start_date?: string

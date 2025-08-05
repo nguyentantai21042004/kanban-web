@@ -86,7 +86,7 @@ export function CardDetailSidebar({
     if (!card) return
     try {
       const response = await apiClient.getCardComments(card.id)
-      setCardComments(response.items || [])
+      setCardComments(response.data?.items || [])
     } catch (error) {
       console.error("Failed to load comments:", error)
     }
@@ -224,7 +224,7 @@ export function CardDetailSidebar({
     if (!card || !selectedFile) return
     setIsUploading(true)
     try {
-      const response = await apiClient.addAttachment(card.id, selectedFile)
+      const response = await apiClient.cards.addAttachment(card.id, selectedFile)
       const updatedCard = { ...card, attachments: [...(card.attachments || []), response] }
       onUpdate(updatedCard)
       setSelectedFile(null)
@@ -246,7 +246,7 @@ export function CardDetailSidebar({
   const handleRemoveAttachment = async (attachmentId: string) => {
     if (!card) return
     try {
-      await apiClient.removeAttachment(card.id, attachmentId)
+      await apiClient.cards.removeAttachment(card.id, attachmentId)
       const updatedCard = {
         ...card,
         attachments: card.attachments?.filter(att => att.id !== attachmentId) || []
@@ -268,7 +268,7 @@ export function CardDetailSidebar({
   const handleAssignCard = async (userId: string) => {
     if (!card) return
     try {
-      const response = await apiClient.assignCard(card.id, userId)
+      const response = await apiClient.cards.assignCard(card.id, userId)
       const updatedCard = (response as any).data || response
       onUpdate(updatedCard)
       toast({
@@ -287,7 +287,7 @@ export function CardDetailSidebar({
   const handleUnassignCard = async () => {
     if (!card) return
     try {
-      const response = await apiClient.unassignCard(card.id)
+      const response = await apiClient.cards.unassignCard(card.id)
       const updatedCard = (response as any).data || response
       onUpdate(updatedCard)
       toast({

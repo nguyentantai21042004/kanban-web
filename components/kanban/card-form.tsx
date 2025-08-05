@@ -341,8 +341,13 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             <div className="space-y-2">
               <Label>Người được gán</Label>
               <Select
-                value={formData.assigned_to}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, assigned_to: value }))}
+                value={formData.assigned_to || "unassigned"}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    assigned_to: value === "unassigned" ? undefined : value,
+                  }))
+                }
                 disabled={isSubmitting}
               >
                 <SelectTrigger 
@@ -355,7 +360,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   <SelectValue placeholder="Chọn người được gán" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Không gán</SelectItem>
+                  <SelectItem value="unassigned">Không gán</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name}
@@ -369,11 +374,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             <div className="space-y-2">
               <Label>Độ ưu tiên</Label>
               <Select
-                value={formData.priority || "none"}
+                value={formData.priority || "no-priority"}
                 onValueChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    priority: value === "none" ? undefined : (value as CardPriority),
+                    priority: value === "no-priority" ? undefined : (value as CardPriority),
                   }))
                 }
                 disabled={isSubmitting}
@@ -388,7 +393,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   <SelectValue placeholder="Chọn độ ưu tiên" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Không có</SelectItem>
+                  <SelectItem value="no-priority">Không có</SelectItem>
                   {priorityOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <span className={option.color}>{option.label}</span>
