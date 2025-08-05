@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi, beforeEach, afterEach } from 'vitest'
 
 // Mock fetch globally
 global.fetch = vi.fn()
@@ -9,7 +9,9 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
-}
+  length: 0,
+  key: vi.fn(),
+} as Storage
 global.localStorage = localStorageMock
 
 // Mock performance API
@@ -52,7 +54,7 @@ global.matchMedia = vi.fn().mockImplementation((query) => ({
 }))
 
 // Mock WebSocket
-global.WebSocket = vi.fn().mockImplementation(() => ({
+const WebSocketMock = vi.fn().mockImplementation(() => ({
   send: vi.fn(),
   close: vi.fn(),
   addEventListener: vi.fn(),
@@ -62,7 +64,14 @@ global.WebSocket = vi.fn().mockImplementation(() => ({
   OPEN: 1,
   CLOSING: 2,
   CLOSED: 3,
-}))
+})) as any
+
+WebSocketMock.CONNECTING = 0
+WebSocketMock.OPEN = 1
+WebSocketMock.CLOSING = 2
+WebSocketMock.CLOSED = 3
+
+global.WebSocket = WebSocketMock
 
 // Setup test environment
 beforeEach(() => {

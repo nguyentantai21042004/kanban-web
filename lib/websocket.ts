@@ -98,7 +98,8 @@ export class WebSocketClient {
           console.error("❌ WebSocket error:", error)
           clearTimeout(connectionTimeout)
           this.connectionPromise = null // Reset connection promise
-          reject(error)
+          // Don't reject immediately, let the onclose handle it
+          // reject(error)
         }
       } catch (error) {
         console.error("❌ WebSocket connection failed:", error)

@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
-import { apiClient } from "@/lib/api"
+import { apiClient } from "@/lib/api/index"
 import type { Board } from "@/lib/types"
 import { Plus, Search, Loader2, User, LogOut } from "lucide-react"
 
@@ -71,7 +71,7 @@ export default function BoardsPage() {
         setIsLoadingMore(true)
       }
 
-      const response = await apiClient.getBoards({
+      const response = await apiClient.boards.getBoards({
         keyword: debouncedSearchKeyword || undefined,
         page: reset ? 1 : currentPage + 1,
         limit: 10,
@@ -111,7 +111,7 @@ export default function BoardsPage() {
       setCurrentPage(1)
       setBoards([])
 
-      const response = await apiClient.getBoards({
+      const response = await apiClient.boards.getBoards({
         keyword: debouncedSearchKeyword || undefined,
         page: 1,
         limit: 10,
@@ -168,8 +168,8 @@ export default function BoardsPage() {
     setError("")
 
     try {
-      await apiClient.createBoard({
-        name: newBoardName,
+      await apiClient.boards.createBoard({
+        title: newBoardName,
         description: newBoardDescription || undefined,
       })
 

@@ -7,7 +7,7 @@ export class ApiDebugger {
   static async testLogin() {
     console.log("🧪 TESTING LOGIN API")
     try {
-      const result = await apiClient.login({
+      const result = await apiClient.auth.login({
         username: "tantai",
         password: "password123"
       })
@@ -32,7 +32,7 @@ export class ApiDebugger {
   static async testGetBoards() {
     console.log("🧪 TESTING GET BOARDS API")
     try {
-      const result = await apiClient.getBoards({
+      const result = await apiClient.boards.getBoards({
         page: 1,
         limit: 10
       })
@@ -58,7 +58,7 @@ export class ApiDebugger {
   static async testGetBoardById(id: string) {
     console.log("🧪 TESTING GET BOARD BY ID API")
     try {
-      const result = await apiClient.getBoardById(id)
+      const result = await apiClient.boards.getBoardById(id)
       console.log("✅ Get board by ID test successful:", result)
       return result
     } catch (error) {
@@ -70,8 +70,8 @@ export class ApiDebugger {
   static async testCreateBoard() {
     console.log("🧪 TESTING CREATE BOARD API")
     try {
-      const result = await apiClient.createBoard({
-        name: "Test Board",
+      const result = await apiClient.boards.createBoard({
+        title: "Test Board",
         description: "Test board description"
       })
       console.log("✅ Create board test successful:", result)
@@ -85,7 +85,7 @@ export class ApiDebugger {
   static async testGetLists() {
     console.log("🧪 TESTING GET LISTS API")
     try {
-      const result = await apiClient.getLists({
+      const result = await apiClient.lists.getLists({
         page: 1,
         limit: 10
       })
@@ -100,7 +100,7 @@ export class ApiDebugger {
   static async testCreateList() {
     console.log("🧪 TESTING CREATE LIST API")
     try {
-      const result = await apiClient.createList({
+      const result = await apiClient.lists.createList({
         title: "Test List",
         board_id: "test_board_id",
         position: 0
@@ -116,7 +116,7 @@ export class ApiDebugger {
   static async testGetCards() {
     console.log("🧪 TESTING GET CARDS API")
     try {
-      const result = await apiClient.getCards({
+      const result = await apiClient.cards.getCards({
         page: 1,
         limit: 10
       })
@@ -131,10 +131,11 @@ export class ApiDebugger {
   static async testCreateCard() {
     console.log("🧪 TESTING CREATE CARD API")
     try {
-      const result = await apiClient.createCard({
+      const result = await apiClient.cards.createCard({
         title: "Test Card",
         description: "Test card description",
-        list_id: "test_list_id"
+        list_id: "test_list_id",
+        board_id: "test_board_id"
       })
       console.log("✅ Create card test successful:", result)
       return result
@@ -147,7 +148,7 @@ export class ApiDebugger {
   static async testGetLabels() {
     console.log("🧪 TESTING GET LABELS API")
     try {
-      const result = await apiClient.getLabels({
+      const result = await apiClient.labels.getLabels({
         page: 1,
         limit: 10
       })
@@ -162,7 +163,7 @@ export class ApiDebugger {
   static async testCreateLabel() {
     console.log("🧪 TESTING CREATE LABEL API")
     try {
-      const result = await apiClient.createLabel({
+      const result = await apiClient.labels.createLabel({
         name: "Test Label",
         color: "#ff0000",
         board_id: "test_board_id"
@@ -178,7 +179,7 @@ export class ApiDebugger {
   static async testGetMyProfile() {
     console.log("🧪 TESTING GET MY PROFILE API")
     try {
-      const result = await apiClient.getMyProfile()
+      const result = await apiClient.auth.getMyProfile()
       console.log("✅ Get my profile test successful:", result)
       return result
     } catch (error) {
@@ -190,7 +191,7 @@ export class ApiDebugger {
   static async testUpdateProfile() {
     console.log("🧪 TESTING UPDATE PROFILE API")
     try {
-      const result = await apiClient.updateProfile({
+      const result = await apiClient.auth.updateProfile({
         full_name: "Test User Updated"
       })
       console.log("✅ Update profile test successful:", result)
@@ -204,7 +205,7 @@ export class ApiDebugger {
   static async testLogout() {
     console.log("🧪 TESTING LOGOUT API")
     try {
-      const result = await apiClient.logout()
+      const result = await apiClient.auth.logout()
       console.log("✅ Logout test successful:", result)
       return result
     } catch (error) {

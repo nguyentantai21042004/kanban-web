@@ -4,15 +4,17 @@ import type React from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type { Card as CardType, Label } from "@/lib/types"
-import { MoreHorizontal, Trash2, Edit, Calendar } from "lucide-react"
+import { MoreHorizontal, Trash2, Edit, Calendar, User, Clock, Tag, CheckSquare, Paperclip, MessageSquare } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 
 interface CardItemProps {
   card: CardType
   labels: Label[]
+  users?: Array<{ id: string; full_name: string; avatar_url?: string }>
   onEdit: (card: CardType) => void
   onDelete: (cardId: string) => void
   onDragStart: (card: CardType) => void
@@ -37,6 +39,7 @@ const priorityLabels = {
 export function CardItem({ 
   card, 
   labels, 
+  users = [],
   onEdit, 
   onDelete, 
   onDragStart, 
@@ -46,6 +49,9 @@ export function CardItem({
   onCardClick 
 }: CardItemProps) {
   const cardLabels = labels.filter((label) => card.labels?.includes(label.id))
+  const assignedUser = users.find(user => user.id === card.assigned_to)
+  const completedChecklistItems = card.checklist?.filter(item => item.completed).length || 0
+  const totalChecklistItems = card.checklist?.length || 0
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = "move"
@@ -93,6 +99,42 @@ export function CardItem({
       <CardContent className="pt-0 space-y-2">
         {card.description && <p className="text-xs text-gray-600 line-clamp-2">{card.description}</p>}
 
+        {/* Assignment */}
+        {assignedUser && (
+          <div className="flex items-center gap-1">
+            <Avatar className="h-5 w-5">
+              <AvatarImage src={assignedUser.avatar_url} />
+              <AvatarFallback className="text-xs">{assignedUser.full_name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-gray-600">{assignedUser.full_name}</span>
+          </div>
+        )}
+
+        {/* Time Tracking */}
+        {(card.estimated_hours || card.actual_hours) && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Clock className="h-3 w-3" />
+            {card.estimated_hours && <span>Ước: {card.estimated_hours}h</span>}
+            {card.actual_hours && <span>Thực: {card.actual_hours}h</span>}
+          </div>
+        )}
+
+        {/* Tags */}
+        {card.tags && card.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {card.tags.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs px-1 py-0">
+                {tag}
+              </Badge>
+            ))}
+            {card.tags.length > 3 && (
+              <Badge variant="outline" className="text-xs px-1 py-0">
+                +{card.tags.length - 3}
+              </Badge>
+            )}
+          </div>
+        )}
+
         {/* Labels */}
         {cardLabels.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -109,6 +151,33 @@ export function CardItem({
                 {label.name}
               </Badge>
             ))}
+          </div>
+        )}
+
+        {/* Checklist Progress */}
+        {totalChecklistItems > 0 && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <CheckSquare className="h-3 w-3" />
+            <span>{completedChecklistItems}/{totalChecklistItems}</span>
+            {completedChecklistItems === totalChecklistItems && (
+              <span className="text-green-600">✓</span>
+            )}
+          </div>
+        )}
+
+        {/* Attachments */}
+        {card.attachments && card.attachments.length > 0 && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Paperclip className="h-3 w-3" />
+            <span>{card.attachments.length} file</span>
+          </div>
+        )}
+
+        {/* Comments */}
+        {card.comments && card.comments.length > 0 && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <MessageSquare className="h-3 w-3" />
+            <span>{card.comments.length} bình luận</span>
           </div>
         )}
 
