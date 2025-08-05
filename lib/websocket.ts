@@ -48,59 +48,7 @@ export class WebSocketClient {
 
       try {
         this.ws = new WebSocket(wsUrl)
-
-        // Set connection timeout
-        const connectionTimeout = setTimeout(() => {
-          if (this.ws?.readyState === WebSocket.CONNECTING) {
-            console.error(`❌ WebSocket connection timeout`)
-            this.ws.close()
-            reject(new Error("Connection timeout"))
-          }
-        }, 5000) // Giảm timeout từ 10s xuống 5s
-
-        // Send auth token after connection
-        this.ws.onopen = () => {
-          console.log(`✅ WebSocket connected successfully`)
-          console.log(`📤 Sending auth message`)
-          clearTimeout(connectionTimeout)
-          this.reconnectAttempts = 0
-
-          // Send authentication confirmation
-          this.sendAuth({
-            type: "auth",
-            data: {
-              token: token,
-            },
-          })
-
-          resolve()
-        }
-
-        this.ws.onmessage = (event) => {
-          console.log(`📥 WebSocket message received:`, event.data)
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data)
-            console.log(`📥 Parsed message:`, message)
-            this.handleMessage(message)
-          } catch (error) {
-            console.error("❌ Failed to parse WebSocket message:", error)
-          }
-        }
-
-        this.ws.onclose = (event) => {
-          console.log(`🔌 WebSocket disconnected:`, event.code, event.reason)
-          clearTimeout(connectionTimeout)
-          this.connectionPromise = null // Reset connection promise
-          this.handleReconnect()
-        }
-
-        this.ws.onerror = (error) => {
-          console.error("❌ WebSocket error:", error)
-          clearTimeout(connectionTimeout)
-          this.connectionPromise = null // Reset connection promise
-          // Don't reject immediately, let the onclose handle it
-          // reject(error)
-        }
+        this.setupWebSocketHandlers(token, resolve, reject)
       } catch (error) {
         console.error("❌ WebSocket connection failed:", error)
         this.connectionPromise = null // Reset connection promise
@@ -171,7 +119,91 @@ export class WebSocketClient {
     return this.ws?.readyState === WebSocket.OPEN
   }
 
+  private setupWebSocketHandlers(token: string, resolve: () => void, reject: (error: any) => void): void {
+    // Set connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (this.ws?.readyState === WebSocket.CONNECTING) {
+        console.error(`❌ WebSocket connection timeout`)
+        this.ws.close()
+        reject(new Error("Connection timeout"))
+      }
+    }, 10000) // Tăng timeout lên 10s cho local development
+
+    // Send auth token after connection
+    this.ws!.onopen = () => {
+      console.log(`✅ WebSocket connected successfully`)
+      console.log(`📤 Sending auth message`)
+      clearTimeout(connectionTimeout)
+      this.reconnectAttempts = 0
+
+      // Send authentication confirmation
+      this.sendAuth({
+        type: "auth",
+        data: {
+          token: token,
+        },
+      })
+
+      resolve()
+    }
+
+    this.ws!.onmessage = (event) => {
+      console.log(`📥 WebSocket message received:`, event.data)
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data)
+        console.log(`📥 Parsed message:`, message)
+        this.handleMessage(message)
+      } catch (error) {
+        console.error("❌ Failed to parse WebSocket message:", error)
+      }
+    }
+
+    this.ws!.onclose = (event) => {
+      console.log(`🔌 WebSocket disconnected:`, event.code, event.reason)
+      clearTimeout(connectionTimeout)
+      this.connectionPromise = null // Reset connection promise
+      
+      // Don't reconnect if it's a normal close or auth error
+      if (event.code === 1000 || event.code === 1008) {
+        console.log(`🔌 WebSocket closed normally or due to auth error`)
+        return
+      }
+      
+      // In development, try production WebSocket if local fails
+      if (Config.isDevelopment() && this.reconnectAttempts === 0) {
+        console.log(`🔄 Local WebSocket failed, trying production WebSocket...`)
+        this.reconnectAttempts++
+        setTimeout(() => {
+          if (this.boardId) {
+            // Try production WebSocket
+            const prodWsUrl = Config.getWebSocketUrl(this.boardId!, token)
+            console.log(`🔗 Trying production WebSocket: ${prodWsUrl}`)
+            this.ws = new WebSocket(prodWsUrl)
+            this.setupWebSocketHandlers(token, resolve, reject)
+          }
+        }, 1000)
+        return
+      }
+      
+      this.handleReconnect()
+    }
+
+    this.ws!.onerror = (error) => {
+      console.error("❌ WebSocket error:", error)
+      clearTimeout(connectionTimeout)
+      this.connectionPromise = null // Reset connection promise
+      // Don't reject immediately, let the onclose handle it
+      // reject(error)
+    }
+  }
+
   private handleReconnect(): void {
+    // Don't reconnect in development mode
+    if (Config.isDevelopment()) {
+      console.log(`🔌 WebSocket reconnection skipped in development mode`)
+      return
+    }
+
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       console.log(`🔄 WebSocket reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`)

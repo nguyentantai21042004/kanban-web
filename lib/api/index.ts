@@ -3,9 +3,9 @@ import { BoardClient } from './client/board-client'
 import { CardClient } from './client/card-client'
 import { ListClient } from './client/list-client'
 import { LabelClient } from './client/label-client'
+import { CommentClient } from './client/comment-client'
 
 // TODO: Import remaining clients
-// import { CommentClient } from './client/comment-client'
 // import { UserClient } from './client/user-client'
 
 export class ApiClient {
@@ -14,9 +14,9 @@ export class ApiClient {
   public cards: CardClient
   public lists: ListClient
   public labels: LabelClient
+  public comments: CommentClient
   
   // TODO: Add remaining clients
-  // public comments: CommentClient
   // public users: UserClient
 
   constructor() {
@@ -25,10 +25,19 @@ export class ApiClient {
     this.cards = new CardClient()
     this.lists = new ListClient()
     this.labels = new LabelClient()
+    this.comments = new CommentClient()
     
     // TODO: Initialize remaining clients
-    // this.comments = new CommentClient()
     // this.users = new UserClient()
+  }
+
+  // Convenience methods for backward compatibility
+  async getCardComments(cardId: string) {
+    return this.comments.getCardComments(cardId)
+  }
+
+  async createComment(data: any) {
+    return this.comments.createComment(data)
   }
 }
 
@@ -41,6 +50,7 @@ export * from './types/board.types'
 export * from './types/card.types'
 export * from './types/list.types'
 export * from './types/label.types'
+export * from './types/comment.types'
 export * from './utils/auth'
 export * from './utils/logger'
 export * from './utils/request'

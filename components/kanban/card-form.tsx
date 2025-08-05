@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Card, CardPriority, Label as LabelType, List, ChecklistItem } from "@/lib/types"
 import { X, Loader2, Calendar, Tag, User, Clock, FileText, CheckSquare, Plus, Minus } from "lucide-react"
+import { ResponsiveSidebar } from "@/components/ui/responsive-sidebar"
 
 interface CardFormProps {
   isOpen: boolean
@@ -254,23 +255,20 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div className="flex-1 bg-black/20 transition-opacity duration-700 ease-in-out" onClick={handleClose} />
-
-      {/* Form Panel */}
-      <div className="w-[500px] bg-white shadow-xl border-l transition-all duration-700 ease-in-out animate-in slide-in-from-right">
-        <form onSubmit={handleSubmit} className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-lg font-semibold">{card ? "Chỉnh sửa card" : "Tạo card mới"}</h2>
-            <Button variant="ghost" size="sm" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <>
+      <ResponsiveSidebar
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={card ? "Chỉnh sửa card" : "Tạo card mới"}
+        minWidth={500}
+        maxWidth={window.innerWidth * 0.9}
+        defaultWidth={Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))}
+        onResize={(width) => {
+          // Optional: You can add resize callback here
+        }}
+      >
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Tiêu đề *</Label>
@@ -341,8 +339,13 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             <div className="space-y-2">
               <Label>Người được gán</Label>
               <Select
-                value={formData.assigned_to}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, assigned_to: value }))}
+                value={formData.assigned_to || "unassigned"}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    assigned_to: value === "unassigned" ? undefined : value,
+                  }))
+                }
                 disabled={isSubmitting}
               >
                 <SelectTrigger 
@@ -355,7 +358,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   <SelectValue placeholder="Chọn người được gán" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Không gán</SelectItem>
+                  <SelectItem value="unassigned">Không gán</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.full_name}
@@ -369,11 +372,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             <div className="space-y-2">
               <Label>Độ ưu tiên</Label>
               <Select
-                value={formData.priority || "none"}
+                value={formData.priority || "no-priority"}
                 onValueChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    priority: value === "none" ? undefined : (value as CardPriority),
+                    priority: value === "no-priority" ? undefined : (value as CardPriority),
                   }))
                 }
                 disabled={isSubmitting}
@@ -388,7 +391,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   <SelectValue placeholder="Chọn độ ưu tiên" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Không có</SelectItem>
+                  <SelectItem value="no-priority">Không có</SelectItem>
                   {priorityOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <span className={option.color}>{option.label}</span>
@@ -590,33 +593,31 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-          </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t bg-gray-50 space-y-3">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {card ? "Đang cập nhật..." : "Đang tạo..."}
-                </>
-              ) : (
-                <>{card ? "Cập nhật card" : "Tạo card"}</>
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Hủy
-            </Button>
-          </div>
-        </form>
-      </div>
+            {/* Footer Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {card ? "Đang cập nhật..." : "Đang tạo..."}
+                  </>
+                ) : (
+                  <>{card ? "Cập nhật card" : "Tạo card"}</>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </div>
+      </ResponsiveSidebar>
 
       {/* Exit Warning Dialog */}
       <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
@@ -637,6 +638,6 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

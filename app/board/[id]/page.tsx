@@ -138,7 +138,7 @@ export default function BoardPage() {
       wsClient.on("list_updated", handleListUpdated)
       wsClient.on("list_deleted", handleListDeleted)
     } catch (error) {
-      console.error("❌ WebSocket connection failed:", error)
+      console.log("ℹ️ WebSocket connection skipped (optional for development)")
       // Don't show error to user, just log it
       // WebSocket is optional for the app to work
     }
