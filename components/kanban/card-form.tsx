@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Card, CardPriority, Label as LabelType, List, ChecklistItem } from "@/lib/types"
 import { X, Loader2, Calendar, Tag, User, Clock, FileText, CheckSquare, Plus, Minus } from "lucide-react"
+import { ResponsiveSidebar } from "@/components/ui/responsive-sidebar"
 
 interface CardFormProps {
   isOpen: boolean
@@ -254,12 +255,17 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div className="flex-1 bg-black/20 transition-opacity duration-700 ease-in-out" onClick={handleClose} />
-
-      {/* Form Panel */}
-      <div className="w-[500px] bg-white shadow-xl border-l transition-all duration-700 ease-in-out animate-in slide-in-from-right">
+    <>
+      <ResponsiveSidebar
+        isOpen={isOpen}
+        onClose={handleClose}
+        minWidth={500}
+        maxWidth={window.innerWidth * 0.9}
+        defaultWidth={Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))}
+        onResize={(width) => {
+          // Optional: You can add resize callback here
+        }}
+      >
         <form onSubmit={handleSubmit} className="h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
@@ -621,7 +627,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
             </Button>
           </div>
         </form>
-      </div>
+      </ResponsiveSidebar>
 
       {/* Exit Warning Dialog */}
       <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
@@ -642,6 +648,6 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

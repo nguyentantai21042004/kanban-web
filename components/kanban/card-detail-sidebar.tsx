@@ -33,6 +33,7 @@ import {
   Loader2,
   Upload as UploadIcon
 } from "lucide-react"
+import { ResponsiveSidebar } from "@/components/ui/responsive-sidebar"
 
 interface CardDetailSidebarProps {
   card: Card | null
@@ -61,8 +62,11 @@ export function CardDetailSidebar({
 }: CardDetailSidebarProps) {
   const [isEditing, setIsEditing] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(400)
-  const [isResizing, setIsResizing] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    // Default to 45% of screen width, min 600px, max 800px
+    const defaultWidth = Math.max(600, Math.min(800, window.innerWidth * 0.45))
+    return defaultWidth
+  })
   const [cardComments, setCardComments] = useState<CommentType[]>([])
   const [newComment, setNewComment] = useState("")
   const [isAddingComment, setIsAddingComment] = useState(false)
@@ -72,8 +76,11 @@ export function CardDetailSidebar({
   const [newChecklistItem, setNewChecklistItem] = useState("")
   const [activeTab, setActiveTab] = useState<"details" | "comments" | "attachments" | "checklist">("details")
   
-  const resizeRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+
+  const handleResize = (width: number) => {
+    setSidebarWidth(width)
+  }
 
   useEffect(() => {
     if (card) {
@@ -86,7 +93,7 @@ export function CardDetailSidebar({
     if (!card) return
     try {
       const response = await apiClient.getCardComments(card.id)
-      setCardComments(response.data?.items || [])
+      setCardComments((response.data?.items || []) as unknown as CommentType[])
     } catch (error) {
       console.error("Failed to load comments:", error)
     }
@@ -101,7 +108,6 @@ export function CardDetailSidebar({
         id: card.id,
         title: card.title,
         description: card.description,
-        priority: card.priority,
         labels: card.labels,
         due_date: card.due_date,
         assigned_to: card.assigned_to,
@@ -110,8 +116,8 @@ export function CardDetailSidebar({
         start_date: card.start_date,
         completion_date: card.completion_date,
         tags: card.tags,
-        checklist: card.checklist,
-      })
+        checklist: card.checklist as any,
+      } as any)
 
       const updatedCard = (response as any).data || response
       onUpdate(updatedCard)
@@ -196,7 +202,7 @@ export function CardDetailSidebar({
         card_id: card.id,
         content: newComment.trim(),
       })
-      setCardComments(prev => [response, ...prev])
+      setCardComments(prev => [response as unknown as CommentType, ...prev])
       setNewComment("")
       toast({
         title: "Thành công",
@@ -225,7 +231,7 @@ export function CardDetailSidebar({
     setIsUploading(true)
     try {
       const response = await apiClient.cards.addAttachment(card.id, selectedFile)
-      const updatedCard = { ...card, attachments: [...(card.attachments || []), response] }
+      const updatedCard = { ...card, attachments: [...(card.attachments || []), response as unknown as Attachment] }
       onUpdate(updatedCard)
       setSelectedFile(null)
       toast({
@@ -303,39 +309,7 @@ export function CardDetailSidebar({
     }
   }
 
-  // Resize functionality
-  useEffect(() => {
-    let animationFrameId: number
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing && resizeRef.current) {
-        animationFrameId = requestAnimationFrame(() => {
-          const newWidth = window.innerWidth - e.clientX
-          setSidebarWidth(Math.max(350, Math.min(1000, newWidth)))
-        })
-      }
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-      }
-    }
-
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove)
-      document.addEventListener("mouseup", handleMouseUp)
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-      }
-    }
-  }, [isResizing])
 
   if (!card || !isOpen) return null
 
@@ -344,18 +318,16 @@ export function CardDetailSidebar({
   const totalChecklistItems = card.checklist?.length || 0
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div 
-        className="flex-1 bg-black/20 transition-opacity duration-700 ease-in-out" 
-        onClick={onClose}
-      />
-
-      {/* Sidebar */}
-      <div
-        className="bg-white shadow-xl border-l flex flex-col transition-all duration-700 ease-in-out"
-        style={{ width: sidebarWidth }}
-      >
+    <ResponsiveSidebar
+      isOpen={isOpen}
+      onClose={onClose}
+      minWidth={500}
+      maxWidth={window.innerWidth * 0.9}
+      defaultWidth={Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))}
+      onResize={(width) => {
+        // Optional: You can add resize callback here
+      }}
+    >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Chi tiết card</h2>
@@ -909,14 +881,6 @@ export function CardDetailSidebar({
             )}
           </Button>
         </div>
-      </div>
-
-      {/* Resize Handle */}
-      <div
-        ref={resizeRef}
-        className="w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize transition-colors duration-200"
-        onMouseDown={() => setIsResizing(true)}
-      />
-    </div>
+      </ResponsiveSidebar>
   )
 } 
