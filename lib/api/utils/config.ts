@@ -3,10 +3,9 @@ export class Config {
   static readonly API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
   // static readonly API_BASE_URL = "http://localhost:8080/api/v1" // For local development
 
-  // WebSocket Configuration
-  static readonly WS_BASE_URL = process.env.NODE_ENV === 'production'
-    ? 'wss://kanban-api.ngtantai.pro'
-    : 'ws://localhost:8080'
+  // WebSocket Configuration - Always use production URL for deployed app
+  static readonly WS_BASE_URL = 'wss://kanban-api.ngtantai.pro'
+  // static readonly WS_BASE_URL = 'ws://localhost:8080' // For local development
 
   // Environment helpers
   static isProduction(): boolean {
