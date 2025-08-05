@@ -259,6 +259,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
       <ResponsiveSidebar
         isOpen={isOpen}
         onClose={handleClose}
+        title={card ? "Chỉnh sửa card" : "Tạo card mới"}
         minWidth={500}
         maxWidth={window.innerWidth * 0.9}
         defaultWidth={Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))}
@@ -266,17 +267,8 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           // Optional: You can add resize callback here
         }}
       >
-        <form onSubmit={handleSubmit} className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-lg font-semibold">{card ? "Chỉnh sửa card" : "Tạo card mới"}</h2>
-            <Button variant="ghost" size="sm" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Tiêu đề *</Label>
@@ -601,32 +593,30 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-          </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t bg-gray-50 space-y-3">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {card ? "Đang cập nhật..." : "Đang tạo..."}
-                </>
-              ) : (
-                <>{card ? "Cập nhật card" : "Tạo card"}</>
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Hủy
-            </Button>
-          </div>
-        </form>
+            {/* Footer Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {card ? "Đang cập nhật..." : "Đang tạo..."}
+                  </>
+                ) : (
+                  <>{card ? "Cập nhật card" : "Tạo card"}</>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </div>
       </ResponsiveSidebar>
 
       {/* Exit Warning Dialog */}

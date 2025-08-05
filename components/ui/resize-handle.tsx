@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 interface ResizeHandleProps {
@@ -11,10 +11,15 @@ interface ResizeHandleProps {
   direction?: "left" | "right"
 }
 
-export function ResizeHandle({ 
-  onResize, 
-  minWidth = 500, 
-  maxWidth, 
+// Smooth interpolation function
+function lerp(start: number, end: number, factor: number): number {
+  return start + (end - start) * factor
+}
+
+export function ResizeHandle({
+  onResize,
+  minWidth = 500,
+  maxWidth,
   className,
   direction = "left"
 }: ResizeHandleProps) {
@@ -22,46 +27,56 @@ export function ResizeHandle({
   const [isHovered, setIsHovered] = useState(false)
   const resizeRef = useRef<HTMLDivElement>(null)
   const lastWidthRef = useRef(0)
+  const targetWidthRef = useRef(0)
   const animationFrameRef = useRef<number>()
+  const velocityRef = useRef(0)
+  const lastTimeRef = useRef(0)
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && resizeRef.current) {
-        // Cancel previous animation frame
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current)
+        const currentTime = performance.now()
+        const deltaTime = currentTime - lastTimeRef.current
+        lastTimeRef.current = currentTime
+
+        // Calculate target width
+        let newWidth: number
+        if (direction === "left") {
+          newWidth = window.innerWidth - e.clientX
+        } else {
+          newWidth = e.clientX
         }
 
-        animationFrameRef.current = requestAnimationFrame(() => {
-          let newWidth: number
+        const maxAllowedWidth = maxWidth || window.innerWidth * 0.9
+        const clampedWidth = Math.max(minWidth, Math.min(maxAllowedWidth, newWidth))
+        
+        targetWidthRef.current = clampedWidth
+
+        // Calculate velocity for smooth interpolation
+        const currentWidth = lastWidthRef.current
+        const widthDiff = clampedWidth - currentWidth
+        velocityRef.current = widthDiff / Math.max(deltaTime, 1) // Prevent division by zero
+
+        // Smooth interpolation with easing
+        if (Math.abs(widthDiff) > 0.1) {
+          const easing = 0.15 // Reduced for smoother feel
+          const smoothedWidth = lerp(currentWidth, clampedWidth, easing)
+          lastWidthRef.current = smoothedWidth
           
-          if (direction === "left") {
-            newWidth = window.innerWidth - e.clientX
-          } else {
-            newWidth = e.clientX
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current)
           }
 
-          const maxAllowedWidth = maxWidth || window.innerWidth * 0.9
-          const finalWidth = Math.max(minWidth, Math.min(maxAllowedWidth, newWidth))
-          
-          // Smooth interpolation between current and target width
-          const currentWidth = lastWidthRef.current
-          const diff = finalWidth - currentWidth
-          
-          if (Math.abs(diff) > 0.1) {
-            // Smooth easing function
-            const easing = 0.3
-            const smoothedWidth = currentWidth + (diff * easing)
-            lastWidthRef.current = smoothedWidth
-            
+          animationFrameRef.current = requestAnimationFrame(() => {
             onResize(Math.round(smoothedWidth))
-          }
-        })
+          })
+        }
       }
     }
 
     const handleMouseUp = () => {
       setIsResizing(false)
+      velocityRef.current = 0
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
@@ -81,9 +96,12 @@ export function ResizeHandle({
     }
   }, [isResizing, onResize, minWidth, maxWidth, direction])
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
     setIsResizing(true)
-    // Initialize last width when starting resize
+    lastTimeRef.current = performance.now()
+    velocityRef.current = 0
+    
     if (resizeRef.current) {
       let currentWidth: number
       if (direction === "left") {
@@ -92,6 +110,7 @@ export function ResizeHandle({
         currentWidth = resizeRef.current.getBoundingClientRect().left
       }
       lastWidthRef.current = currentWidth
+      targetWidthRef.current = currentWidth
     }
   }
 
@@ -99,15 +118,10 @@ export function ResizeHandle({
     <div
       ref={resizeRef}
       className={cn(
-        // Base styles - smaller and more subtle
-        "relative w-2 bg-gray-200 hover:bg-gray-300 cursor-col-resize transition-all duration-150",
-        // Hover effects - more subtle
+        "relative w-2 bg-gray-200 hover:bg-gray-300 cursor-col-resize transition-all duration-200",
         "hover:w-3 hover:bg-gray-400 hover:shadow-sm",
-        // Active/Resizing effects - subtle
         "active:w-4 active:bg-gray-500 active:shadow-md",
-        // Visual indicator dots - smaller
         "flex items-center justify-center",
-        // Resizing state
         isResizing && "w-4 bg-gray-500 shadow-md",
         className
       )}
@@ -117,21 +131,21 @@ export function ResizeHandle({
       style={{
         cursor: 'col-resize',
         userSelect: 'none',
+        touchAction: 'none',
       }}
       title="Kéo để thay đổi độ rộng"
     >
-      {/* Visual dots indicator - smaller and more subtle */}
       <div className="flex flex-col space-y-0.5">
         <div className={cn(
-          "w-0.5 h-0.5 rounded-full transition-colors duration-150",
+          "w-0.5 h-0.5 rounded-full transition-colors duration-200",
           isResizing ? "bg-gray-300" : isHovered ? "bg-gray-500" : "bg-gray-400"
         )} />
         <div className={cn(
-          "w-0.5 h-0.5 rounded-full transition-colors duration-150",
+          "w-0.5 h-0.5 rounded-full transition-colors duration-200",
           isResizing ? "bg-gray-300" : isHovered ? "bg-gray-500" : "bg-gray-400"
         )} />
         <div className={cn(
-          "w-0.5 h-0.5 rounded-full transition-colors duration-150",
+          "w-0.5 h-0.5 rounded-full transition-colors duration-200",
           isResizing ? "bg-gray-300" : isHovered ? "bg-gray-500" : "bg-gray-400"
         )} />
       </div>

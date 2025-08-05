@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { ResizeHandle } from "./resize-handle"
 
@@ -8,63 +8,61 @@ interface ResponsiveSidebarProps {
   isOpen: boolean
   onClose: () => void
   children: React.ReactNode
+  title?: string
   className?: string
   minWidth?: number
   maxWidth?: number
   defaultWidth?: number
-  mobileBreakpoint?: number
   onResize?: (width: number) => void
+  mobileBreakpoint?: number
 }
 
 export function ResponsiveSidebar({
   isOpen,
   onClose,
   children,
+  title,
   className,
   minWidth = 500,
   maxWidth,
   defaultWidth,
-  mobileBreakpoint = 768,
-  onResize
+  onResize,
+  mobileBreakpoint = 768
 }: ResponsiveSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (defaultWidth) return defaultWidth
     // Default to 70% of screen width, min 600px, max 90%
     return Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))
   })
-  const [isMobile, setIsMobile] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
 
-  const handleResize = (width: number) => {
-    if (!isMobile) {
-      setSidebarWidth(width)
-      onResize?.(width)
+  const [isVisible, setIsVisible] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Check mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < mobileBreakpoint)
     }
-  }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [mobileBreakpoint])
 
   // Handle open/close animation
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true)
     } else {
-      // Delay hiding to allow for exit animation
-      const timer = setTimeout(() => {
-        setIsVisible(false)
-      }, 1500) // Increased delay for smoother animation
+      const timer = setTimeout(() => setIsVisible(false), 1500) // Match transition duration
       return () => clearTimeout(timer)
     }
   }, [isOpen])
 
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < mobileBreakpoint)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [mobileBreakpoint])
+  const handleResize = (width: number) => {
+    setSidebarWidth(width)
+    onResize?.(width)
+  }
 
   // Update width on window resize
   useEffect(() => {
@@ -79,57 +77,73 @@ export function ResponsiveSidebar({
 
   if (!isVisible) return null
 
-  // Mobile layout - full screen overlay
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50">
         {/* Backdrop */}
-        <div 
+        <div
           className={cn(
-            "absolute inset-0 bg-black/50 transition-opacity duration-1500 ease-in-out",
+            "fixed inset-0 bg-black/50 transition-opacity duration-1500",
             isOpen ? "opacity-100" : "opacity-0"
           )}
           onClick={onClose}
         />
-
+        
         {/* Mobile Sidebar */}
         <div
           className={cn(
-            "absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl",
-            "transform transition-transform duration-1500 ease-in-out",
+            "fixed right-0 top-0 h-full bg-background shadow-lg transition-transform duration-1500 ease-in-out",
             isOpen ? "translate-x-0" : "translate-x-full",
             className
           )}
+          style={{ width: "100%" }}
         >
-          {children}
+          {/* Header */}
+          {title && (
+            <div className="flex items-center justify-between p-4 border-b bg-background">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+          
+          {/* Content */}
+          <div className="h-full overflow-y-auto">
+            {children}
+          </div>
         </div>
       </div>
     )
   }
 
-  // Desktop layout - resizable sidebar
+  // Desktop Sidebar
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div 
+      <div
         className={cn(
-          "flex-1 bg-black/20 transition-opacity duration-1500 ease-in-out",
+          "fixed inset-0 bg-black/50 transition-opacity duration-1500",
           isOpen ? "opacity-100" : "opacity-0"
         )}
         onClick={onClose}
       />
-
-      {/* Sidebar */}
+      
+      {/* Desktop Sidebar */}
       <div
         className={cn(
-          "bg-white shadow-xl border-l flex flex-col transition-all duration-1500 ease-in-out",
-          "transform",
+          "fixed right-0 top-0 h-full bg-background shadow-lg transition-transform duration-1500 ease-in-out flex flex-col",
           isOpen ? "translate-x-0" : "translate-x-full",
           className
         )}
         style={{ width: sidebarWidth }}
       >
-        {/* Resize Handle - Positioned on the left edge of sidebar */}
+        {/* Resize Handle - Positioned on the left edge */}
         <div className="absolute left-0 top-0 h-full flex items-center justify-center -ml-1 z-20">
           <ResizeHandle
             onResize={handleResize}
@@ -139,7 +153,26 @@ export function ResponsiveSidebar({
             className="h-full"
           />
         </div>
-        {children}
+
+        {/* Header */}
+        {title && (
+          <div className="flex items-center justify-between p-4 border-b bg-background flex-shrink-0">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {children}
+        </div>
       </div>
     </div>
   )

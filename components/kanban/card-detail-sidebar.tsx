@@ -321,6 +321,7 @@ export function CardDetailSidebar({
     <ResponsiveSidebar
       isOpen={isOpen}
       onClose={onClose}
+      title="Chi tiết card"
       minWidth={500}
       maxWidth={window.innerWidth * 0.9}
       defaultWidth={Math.max(600, Math.min(window.innerWidth * 0.9, window.innerWidth * 0.7))}
@@ -328,13 +329,7 @@ export function CardDetailSidebar({
         // Optional: You can add resize callback here
       }}
     >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Chi tiết card</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="p-6">
 
         {/* Tabs */}
         <div className="flex border-b">
@@ -881,6 +876,7 @@ export function CardDetailSidebar({
             )}
           </Button>
         </div>
-      </ResponsiveSidebar>
+      </div>
+    </ResponsiveSidebar>
   )
 } 
