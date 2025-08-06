@@ -50,7 +50,7 @@ export interface Board {
   id: string
   name: string
   description?: string
-  alias?: string
+  alias: string
   created_by?: {
     id: string
     name: string
@@ -83,20 +83,20 @@ export interface GetBoardResponse {
 // List Types
 export interface List {
   id: string
-  title: string
+  name: string // Changed from title to name to match swagger
   board_id: string
   position: number
 }
 
 export interface CreateListRequest {
-  title: string
+  name: string // Changed from title to name to match swagger
   board_id: string
   position: number
 }
 
 export interface UpdateListRequest {
   id: string
-  title: string
+  name: string // Changed from title to name to match swagger
   position: number
 }
 
@@ -116,8 +116,8 @@ export type CardActionType = "created" | "moved" | "updated" | "commented"
 
 export interface ChecklistItem {
   id: string
-  title: string
-  completed: boolean
+  content: string // Changed from title to content to match swagger
+  is_completed: boolean // Changed from completed to is_completed to match swagger
   created_at: string
   updated_at: string
 }
@@ -146,9 +146,13 @@ export interface Comment {
 
 export interface Card {
   id: string
-  title: string
+  name: string // Changed from title to name to match swagger
+  alias: string
   description?: string
-  list_id: string
+  list: {
+    id: string
+    name: string
+  }
   position: number
   priority?: CardPriority
   labels?: string[]
@@ -160,42 +164,50 @@ export interface Card {
   completion_date?: string
   tags?: string[]
   checklist?: ChecklistItem[]
-  attachments?: Attachment[]
-  comments?: Comment[]
+  attachments?: string[]
   is_archived: boolean
+  last_activity_at: string
   created_at: string
   updated_at: string
-  deleted_at?: string
+  created_by: {
+    id: string
+    name: string
+  }
+  updated_by?: {
+    id: string
+    name: string
+  }
 }
 
 export interface CreateCardRequest {
-  title: string
+  name: string // Changed from title to name to match swagger
   description?: string
   list_id: string
-  priority?: CardPriority
-  labels?: string[]
-  due_date?: string
+  board_id: string // Added board_id as required field
   assigned_to?: string
-  estimated_hours?: number
-  start_date?: string
-  tags?: string[]
   checklist?: ChecklistItem[]
+  due_date?: string
+  start_date?: string
+  estimated_hours?: number
+  labels?: string[]
+  priority?: CardPriority
+  tags?: string[]
 }
 
 export interface UpdateCardRequest {
   id: string
-  title?: string
+  name?: string // Changed from title to name to match swagger
   description?: string
-  priority?: CardPriority
-  labels?: string[]
-  due_date?: string
   assigned_to?: string
+  checklist?: ChecklistItem[]
+  completion_date?: string
+  due_date?: string
+  start_date?: string
   estimated_hours?: number
   actual_hours?: number
-  start_date?: string
-  completion_date?: string
+  labels?: string[]
+  priority?: CardPriority
   tags?: string[]
-  checklist?: ChecklistItem[]
 }
 
 export interface MoveCardRequest {

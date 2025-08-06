@@ -169,7 +169,7 @@ export default function BoardsPage() {
 
     try {
       await apiClient.boards.createBoard({
-        title: newBoardName,
+        name: newBoardName,
         description: newBoardDescription || undefined,
       })
 

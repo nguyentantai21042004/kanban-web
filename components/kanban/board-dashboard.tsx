@@ -283,7 +283,7 @@ export function BoardDashboard({
           <div className="space-y-3">
             {listBreakdown.map(({ list, cardCount }) => (
               <div key={list.id} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{list.title}</span>
+                <span className="text-sm font-medium">{list.name}</span>
                 <Badge variant="outline">{cardCount} card</Badge>
               </div>
             ))}

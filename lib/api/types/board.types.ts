@@ -1,32 +1,35 @@
 export interface Board {
   id: string
-  title: string
+  name: string // Changed from title to name to match swagger
+  alias: string
   description?: string
-  created_at: string
-  updated_at: string
-  created_by: string
+  created_by: {
+    id: string
+    name: string
+  }
 }
 
 export interface CreateBoardRequest {
-  title: string
+  name: string // Changed from title to name to match swagger
   description?: string
 }
 
 export interface UpdateBoardRequest {
   id: string
-  title?: string
+  name?: string // Changed from title to name to match swagger
   description?: string
 }
 
 export interface GetBoardResponse {
-  success: boolean
+  error_code: number // Changed from success to error_code to match swagger
   message: string
   data: {
     items: Board[]
     meta: {
+      count: number
+      current_page: number
+      per_page: number
       total: number
-      page: number
-      limit: number
       total_pages: number
     }
   }

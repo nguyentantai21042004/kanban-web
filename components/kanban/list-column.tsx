@@ -54,14 +54,14 @@ export function ListColumn({
   getDropPosition,
 }: ListColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editTitle, setEditTitle] = useState(list.title || "Untitled List")
+  const [editTitle, setEditTitle] = useState(list.name || "Untitled List")
 
   const sortedCards = [...cards].sort((a, b) => a.position - b.position)
   const isDraggedOverThis = isDraggingOver(list.id)
   const dropPosition = getDropPosition(list.id)
 
   // Fallback title if API doesn't return title
-  const displayTitle = list.title || "Untitled List"
+  const displayTitle = list.name || "Untitled List"
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -124,15 +124,15 @@ export function ListColumn({
 
   const handleTitleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (editTitle.trim() && editTitle !== list.title) {
-      onEditList({ ...list, title: editTitle.trim() })
+    if (editTitle.trim() && editTitle !== list.name) {
+      onEditList({ ...list, name: editTitle.trim() })
     }
     setIsEditingTitle(false)
   }
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      setEditTitle(list.title || "Untitled List")
+      setEditTitle(list.name || "Untitled List")
       setIsEditingTitle(false)
     }
   }

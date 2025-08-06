@@ -20,7 +20,14 @@ export class BoardClient extends BaseClient {
     
     try {
       const endpoint = this.createUrlWithParams('/boards', params)
-      return await this.request<GetBoardResponse>(endpoint)
+      const response = await this.request<GetBoardResponse>(endpoint)
+      
+      // Handle new response format {error_code, message, data}
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to get boards')
+      }
+      
+      return response
     } catch (error) {
       this.logError('getBoards', error)
       throw error
@@ -31,7 +38,14 @@ export class BoardClient extends BaseClient {
     this.logMethodCall('getBoardById', { id })
     
     try {
-      return await this.request<Board>(`/boards/${id}`)
+      const response = await this.request<{error_code: number, message: string, data: Board}>(`/boards/${id}`)
+      
+      // Handle new response format {error_code, message, data}
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to get board')
+      }
+      
+      return response.data
     } catch (error) {
       this.logError('getBoardById', error)
       throw error
@@ -42,10 +56,17 @@ export class BoardClient extends BaseClient {
     this.logMethodCall('createBoard', data)
     
     try {
-      return await this.request<Board>("/boards", {
+      const response = await this.request<{error_code: number, message: string, data: Board}>("/boards", {
         method: "POST",
         body: JSON.stringify(data),
       })
+      
+      // Handle new response format {error_code, message, data}
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to create board')
+      }
+      
+      return response.data
     } catch (error) {
       this.logError('createBoard', error)
       throw error
@@ -56,10 +77,17 @@ export class BoardClient extends BaseClient {
     this.logMethodCall('updateBoard', data)
     
     try {
-      return await this.request<Board>("/boards", {
+      const response = await this.request<{error_code: number, message: string, data: Board}>("/boards", {
         method: "PUT",
         body: JSON.stringify(data),
       })
+      
+      // Handle new response format {error_code, message, data}
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to update board')
+      }
+      
+      return response.data
     } catch (error) {
       this.logError('updateBoard', error)
       throw error

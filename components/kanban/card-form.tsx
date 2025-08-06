@@ -34,7 +34,7 @@ interface CardFormProps {
 }
 
 export interface CardFormData {
-  title: string
+  name: string // Changed from title to name to match API
   description?: string
   list_id: string
   priority?: CardPriority
@@ -55,7 +55,7 @@ const priorityOptions = [
 
 export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defaultListId, users = [] }: CardFormProps) {
   const [formData, setFormData] = useState<CardFormData>({
-    title: "",
+    name: "",
     description: "",
     list_id: defaultListId || "",
     priority: undefined,
@@ -80,15 +80,15 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
       if (card) {
         // Edit mode
         const initialData = {
-          title: card.title,
+          name: card.name,
           description: card.description || "",
-          list_id: card.list_id,
+          list_id: card.list?.id || "",
           priority: card.priority,
           labels: card.labels || [],
-          due_date: card.due_date ? card.due_date.split("T")[0] : "",
+          due_date: card.due_date || "",
           assigned_to: card.assigned_to || "",
           estimated_hours: card.estimated_hours,
-          start_date: card.start_date ? card.start_date.split("T")[0] : "",
+          start_date: card.start_date || "",
           tags: card.tags || [],
           checklist: card.checklist || [],
         }
@@ -98,7 +98,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
         // Create mode
         const selectedListId = defaultListId || lists[0]?.id || ""
         const initialData = {
-          title: "",
+          name: "",
           description: "",
           list_id: selectedListId,
           priority: undefined,
@@ -126,7 +126,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
         ...prev,
         list_id: defaultListId
       }))
-      setSelectedListTitle(selectedList?.title || "")
+              setSelectedListTitle(selectedList?.name || "")
     }
   }, [defaultListId, lists, isOpen, card])
 
@@ -138,8 +138,9 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     try {
       const submitData = {
         ...formData,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined,
-        start_date: formData.start_date ? new Date(formData.start_date).toISOString() : undefined,
+        // Send dates as YYYY-MM-DD format strings as per API requirement
+        due_date: formData.due_date || undefined,
+        start_date: formData.start_date || undefined,
         labels: formData.labels?.length ? formData.labels : undefined,
         tags: formData.tags?.length ? formData.tags : undefined,
         checklist: formData.checklist?.length ? formData.checklist : undefined,
@@ -184,8 +185,8 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     if (newChecklistItem.trim()) {
       const newItem: ChecklistItem = {
         id: `temp-${Date.now()}`,
-        title: newChecklistItem.trim(),
-        completed: false,
+        content: newChecklistItem.trim(), // Changed from title to content
+        is_completed: false, // Changed from completed to is_completed
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -201,7 +202,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     setFormData(prev => ({
       ...prev,
       checklist: prev.checklist?.map(item => 
-        item.id === itemId ? { ...item, completed: !item.completed } : item
+        item.id === itemId ? { ...item, is_completed: !item.is_completed } : item // Changed from completed to is_completed
       ) || []
     }))
   }
@@ -218,7 +219,7 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
     if (!originalFormData) return false
     
     return (
-      formData.title !== originalFormData.title ||
+      formData.name !== originalFormData.name ||
       formData.description !== originalFormData.description ||
       formData.list_id !== originalFormData.list_id ||
       formData.priority !== originalFormData.priority ||
@@ -271,11 +272,11 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
-              <Label htmlFor="title">Tiêu đề *</Label>
+              <Label htmlFor="name">Tiêu đề *</Label>
               <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Nhập tiêu đề card..."
                 required
                 disabled={isSubmitting}
@@ -322,13 +323,13 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   className="focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                 >
                   <SelectValue placeholder="Chọn list">
-                    {selectedListTitle || (formData.list_id && lists.find(list => list.id === formData.list_id)?.title)}
+                    {selectedListTitle || (formData.list_id && lists.find(list => list.id === formData.list_id)?.name)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {lists.map((list) => (
                     <SelectItem key={list.id} value={list.id}>
-                      {list.title}
+                      {list.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -566,12 +567,12 @@ export function CardForm({ isOpen, onClose, onSubmit, card, lists, labels, defau
                   {formData.checklist.map((item) => (
                     <div key={item.id} className="flex items-center space-x-2">
                       <Checkbox
-                        checked={item.completed}
+                        checked={item.is_completed}
                         onCheckedChange={() => handleChecklistToggle(item.id)}
                         disabled={isSubmitting}
                       />
-                      <span className={`flex-1 ${item.completed ? 'line-through text-gray-500' : ''}`}>
-                        {item.title}
+                      <span className={`flex-1 ${item.is_completed ? 'line-through text-gray-500' : ''}`}>
+                        {item.content}
                       </span>
                       <Button
                         type="button"

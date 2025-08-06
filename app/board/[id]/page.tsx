@@ -79,42 +79,25 @@ export default function BoardPage() {
     setSelectedCard(updatedCard)
   }
 
-  // Load data
-  useEffect(() => {
-    if (boardId) {
-      loadBoardData()
-      connectWebSocket()
-    }
 
-    return () => {
-      // Cleanup WebSocket listeners
-      wsClient.off("card_created", handleCardCreated)
-      wsClient.off("card_updated", handleCardUpdated)
-      wsClient.off("card_moved", handleCardMoved)
-      wsClient.off("card_deleted", handleCardDeleted)
-      wsClient.off("list_created", handleListCreated)
-      wsClient.off("list_updated", handleListUpdated)
-      wsClient.off("list_deleted", handleListDeleted)
-      wsClient.disconnect()
-    }
-  }, [boardId]) // Only depend on boardId
 
-  const loadBoardData = async () => {
+  const loadBoardData = useCallback(async () => {
+    console.log(`🔄 loadBoardData called for boardId: ${boardId}`)
     try {
       setIsLoading(true)
       setError("")
 
       const [boardData, listsData, cardsData, labelsData] = await Promise.all([
         apiClient.boards.getBoardById(boardId),
-        apiClient.lists.getLists(),
-        apiClient.cards.getCards(),
-        apiClient.labels.getLabels(),
+        apiClient.lists.getLists({ board_id: boardId }), // Only get lists for this board
+        apiClient.cards.getCards({ board_id: boardId }),  // Only get cards for this board
+        apiClient.labels.getLabels({ board_id: boardId }), // Only get labels for this board
       ])
 
       setBoard(boardData)
-      setLists(listsData.data?.items?.filter((list) => list.board_id === boardId) || [])
+      setLists(listsData.data?.items || []) // No need to filter, already filtered by API
       setCards(cardsData.data?.items || [])
-      setLabels(labelsData.data?.items?.filter((label) => label.board_id === boardId) || [])
+      setLabels(labelsData.data?.items || []) // No need to filter, already filtered by API
       // Remove users API call since endpoint doesn't exist
       setUsers([])
     } catch (error: any) {
@@ -123,9 +106,10 @@ export default function BoardPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [boardId])
 
-  const connectWebSocket = async () => {
+  const connectWebSocket = useCallback(async () => {
+    console.log(`🌐 connectWebSocket called for boardId: ${boardId}`)
     try {
       await wsClient.connect(boardId)
       
@@ -142,7 +126,7 @@ export default function BoardPage() {
       // Don't show error to user, just log it
       // WebSocket is optional for the app to work
     }
-  }
+  }, [boardId]) // Only depend on boardId to avoid circular dependencies
 
   // WebSocket event handlers
   const handleCardCreated = useCallback(
@@ -160,7 +144,7 @@ export default function BoardPage() {
       })
       toast({
         title: "Card mới được tạo",
-        description: `"${card.title}" đã được thêm vào board`,
+        description: `"${card.name}" đã được thêm vào board`,
       })
     },
     [toast],
@@ -196,7 +180,7 @@ export default function BoardPage() {
       // Fix title if API returns "string" instead of actual title
       const fixedList = {
         ...list,
-        title: list.title === "string" ? "Untitled List" : list.title
+        name: list.name === "string" ? "Untitled List" : list.name
       }
       
       return [...prev, fixedList]
@@ -209,8 +193,29 @@ export default function BoardPage() {
 
   const handleListDeleted = useCallback((listId: string) => {
     setLists((prev) => prev.filter((l) => l.id !== listId))
-    setCards((prev) => prev.filter((c) => c.list_id !== listId))
+    setCards((prev) => prev.filter((c) => c.list.id !== listId))
   }, [])
+
+  // Load data - useEffect placed after all handlers to avoid dependency issues
+  useEffect(() => {
+    console.log(`🔁 useEffect triggered for boardId: ${boardId}`)
+    if (boardId) {
+      loadBoardData()
+      connectWebSocket()
+    }
+
+    return () => {
+      // Cleanup WebSocket listeners
+      wsClient.off("card_created", handleCardCreated)
+      wsClient.off("card_updated", handleCardUpdated)
+      wsClient.off("card_moved", handleCardMoved)
+      wsClient.off("card_deleted", handleCardDeleted)
+      wsClient.off("list_created", handleListCreated)
+      wsClient.off("list_updated", handleListUpdated)
+      wsClient.off("list_deleted", handleListDeleted)
+      wsClient.disconnect()
+    }
+  }, [boardId, loadBoardData, connectWebSocket]) // Only include callbacks as deps
 
   // Card operations
   const handleAddCard = (listId: string) => {
@@ -247,7 +252,10 @@ export default function BoardPage() {
         })
       } else {
         // Create new card
-        const response = await apiClient.cards.createCard(data)
+        const response = await apiClient.cards.createCard({
+          ...data,
+          board_id: boardId, // Add board_id to create request
+        })
         console.log("✅ Card created successfully:", response)
         
         // Extract card data from response
@@ -320,7 +328,7 @@ export default function BoardPage() {
       setIsCreatingList(true)
       const response = await apiClient.lists.createList({
         board_id: boardId,
-        title: newListTitle,
+        name: newListTitle,
         position: lists.length + 1,
       })
       const newList = (response as any).data || response
@@ -360,7 +368,7 @@ export default function BoardPage() {
     try {
       const response = await apiClient.lists.updateList({
         id: list.id,
-        title: list.title,
+        name: list.name,
         position: list.position,
       })
       const updatedList = (response as any).data || response
@@ -382,7 +390,7 @@ export default function BoardPage() {
     try {
       await apiClient.lists.deleteLists([listId])
       setLists((prev) => prev.filter((l) => l.id !== listId))
-      setCards((prev) => prev.filter((c) => c.list_id !== listId))
+      setCards((prev) => prev.filter((c) => c.list.id !== listId))
       
       // Note: Don't send WebSocket event here because we already removed the list from state
       // The WebSocket event will be handled by handleListDeleted if other users delete lists
@@ -462,7 +470,7 @@ export default function BoardPage() {
             id: updatedCard.id,
             list_id: updatedCard.list_id,
             position: updatedCard.position,
-            title: updatedCard.title,
+            name: updatedCard.name,
             description: updatedCard.description,
             priority: updatedCard.priority,
             labels: updatedCard.labels,
@@ -549,9 +557,9 @@ export default function BoardPage() {
         <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
           {lists.map((list) => (
             <ListColumn
-              key={list.id || `list-${list.position}-${list.title}`}
+              key={list.id || `list-${list.position}-${list.name}`}
               list={list}
-              cards={cards.filter((card) => card.list_id === list.id)}
+              cards={cards.filter((card) => card.list.id === list.id)}
               labels={labels}
               users={users}
               onAddCard={handleAddCard}

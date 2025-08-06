@@ -10,6 +10,7 @@ import type { ApiResponse } from '../types/auth.types'
 export interface GetLabelsParams {
   ids?: string
   label_id?: string
+  board_id?: string  // Added board_id filter parameter
   keyword?: string
   page?: number
   limit?: number

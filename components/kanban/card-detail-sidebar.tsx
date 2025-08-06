@@ -106,7 +106,7 @@ export function CardDetailSidebar({
     try {
       const response = await apiClient.cards.updateCard({
         id: card.id,
-        title: card.title,
+        name: card.name,
         description: card.description,
         labels: card.labels,
         due_date: card.due_date,
@@ -170,8 +170,8 @@ export function CardDetailSidebar({
     const currentChecklist = card.checklist || []
     const newItem: ChecklistItem = {
       id: `temp-${Date.now()}`,
-      title: newChecklistItem.trim(),
-      completed: false,
+      content: newChecklistItem.trim(), // Changed from title to content
+      is_completed: false, // Changed from completed to is_completed  
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -183,7 +183,7 @@ export function CardDetailSidebar({
     if (!card) return
     const currentChecklist = card.checklist || []
     const updatedChecklist = currentChecklist.map(item =>
-      item.id === itemId ? { ...item, completed: !item.completed } : item
+      item.id === itemId ? { ...item, is_completed: !item.is_completed } : item
     )
     handleFieldChange("checklist", updatedChecklist)
   }
@@ -314,7 +314,7 @@ export function CardDetailSidebar({
   if (!card || !isOpen) return null
 
   const assignedUser = users.find(user => user.id === card.assigned_to)
-  const completedChecklistItems = card.checklist?.filter(item => item.completed).length || 0
+  const completedChecklistItems = card.checklist?.filter(item => item.is_completed).length || 0
   const totalChecklistItems = card.checklist?.length || 0
 
   return (
@@ -384,8 +384,8 @@ export function CardDetailSidebar({
                 <div className="space-y-2">
                   <LabelComponent>Tiêu đề</LabelComponent>
                   <Input
-                    value={card.title}
-                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                    value={card.name}
+                    onChange={(e) => handleFieldChange("name", e.target.value)}
                     style={{
                       borderColor: '#e5e7eb',
                       outline: 'none',
@@ -546,8 +546,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Ngày bắt đầu</LabelComponent>
                       <Input
                         type="date"
-                        value={card.start_date ? card.start_date.split("T")[0] : ""}
-                        onChange={(e) => handleFieldChange("start_date", e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+                                        value={card.start_date || ""}
+                onChange={(e) => handleFieldChange("start_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
@@ -559,8 +559,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Hạn hoàn thành</LabelComponent>
                       <Input
                         type="date"
-                        value={card.due_date ? card.due_date.split("T")[0] : ""}
-                        onChange={(e) => handleFieldChange("due_date", e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+                                        value={card.due_date || ""}
+                onChange={(e) => handleFieldChange("due_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
@@ -572,8 +572,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Ngày hoàn thành</LabelComponent>
                       <Input
                         type="date"
-                        value={card.completion_date ? card.completion_date.split("T")[0] : ""}
-                        onChange={(e) => handleFieldChange("completion_date", e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+                                        value={card.completion_date || ""}
+                onChange={(e) => handleFieldChange("completion_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
@@ -835,11 +835,11 @@ export function CardDetailSidebar({
                     card.checklist.map((item) => (
                       <div key={item.id} className="flex items-center space-x-2">
                         <Checkbox
-                          checked={item.completed}
+                          checked={item.is_completed}
                           onCheckedChange={() => handleChecklistToggle(item.id)}
                         />
-                        <span className={`flex-1 ${item.completed ? 'line-through text-gray-500' : ''}`}>
-                          {item.title}
+                        <span className={`flex-1 ${item.is_completed ? 'line-through text-gray-500' : ''}`}>
+                          {item.content}
                         </span>
                         <Button
                           type="button"

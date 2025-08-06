@@ -63,7 +63,7 @@ export function CardPreview({
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="text-sm font-medium leading-tight flex-1">{card.title}</h4>
+          <h4 className="text-sm font-medium leading-tight flex-1">{card.name}</h4>
           
           {/* Priority Badge */}
           {card.priority && (

@@ -14,6 +14,7 @@ import type { ApiResponse } from '../types/auth.types'
 export interface GetCardsParams {
   ids?: string
   list_id?: string
+  board_id?: string  // Added board_id filter parameter
   keyword?: string
   page?: number
   limit?: number
@@ -41,7 +42,11 @@ export class CardClient extends BaseClient {
     this.logMethodCall('getCardById', { id })
     
     try {
-      return await this.request<Card>(`/cards/${id}`)
+      const response = await this.request<{error_code: number, message: string, data: Card}>(`/cards/${id}`)
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to get card')
+      }
+      return response.data
     } catch (error) {
       this.logError('getCardById', error)
       throw error
@@ -52,10 +57,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('createCard', data)
     
     try {
-      return await this.request<Card>("/cards", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards", {
         method: "POST",
         body: JSON.stringify(data),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to create card')
+      }
+      return response.data
     } catch (error) {
       this.logError('createCard', error)
       throw error
@@ -66,10 +75,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('updateCard', data)
     
     try {
-      return await this.request<Card>("/cards", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards", {
         method: "PUT",
         body: JSON.stringify(data),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to update card')
+      }
+      return response.data
     } catch (error) {
       this.logError('updateCard', error)
       throw error
@@ -80,10 +93,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('moveCard', data)
     
     try {
-      return await this.request<Card>("/cards/move", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/move", {
         method: "POST",
         body: JSON.stringify(data),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to move card')
+      }
+      return response.data
     } catch (error) {
       this.logError('moveCard', error)
       throw error
@@ -109,10 +126,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('assignCard', { cardId, userId })
     
     try {
-      return await this.request<Card>("/cards/assign", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/assign", {
         method: "POST",
-        body: JSON.stringify({ card_id: cardId, user_id: userId }),
+        body: JSON.stringify({ card_id: cardId, assigned_to: userId }), // Changed user_id to assigned_to to match swagger
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to assign card')
+      }
+      return response.data
     } catch (error) {
       this.logError('assignCard', error)
       throw error
@@ -123,10 +144,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('unassignCard', { cardId })
     
     try {
-      return await this.request<Card>("/cards/unassign", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/unassign", {
         method: "POST",
         body: JSON.stringify({ card_id: cardId }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to unassign card')
+      }
+      return response.data
     } catch (error) {
       this.logError('unassignCard', error)
       throw error
@@ -134,33 +159,36 @@ export class CardClient extends BaseClient {
   }
 
   // Card Attachments APIs
-  async addAttachment(cardId: string, file: File): Promise<Attachment> {
-    this.logMethodCall('addAttachment', { cardId, filename: file.name })
+  async addAttachment(cardId: string, attachmentId: string): Promise<Card> {
+    this.logMethodCall('addAttachment', { cardId, attachmentId })
     
     try {
-      const formData = new FormData()
-      formData.append("card_id", cardId)
-      formData.append("file", file)
-      
-      return await this.request<Attachment>("/cards/attachments/add", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/attachments/add", {
         method: "POST",
-        body: formData,
-        headers: {}, // Let browser set Content-Type for FormData
+        body: JSON.stringify({ card_id: cardId, attachment_id: attachmentId }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to add attachment')
+      }
+      return response.data
     } catch (error) {
       this.logError('addAttachment', error)
       throw error
     }
   }
 
-  async removeAttachment(cardId: string, attachmentId: string): Promise<ApiResponse<null>> {
+  async removeAttachment(cardId: string, attachmentId: string): Promise<Card> {
     this.logMethodCall('removeAttachment', { cardId, attachmentId })
     
     try {
-      return await this.request<ApiResponse<null>>("/cards/attachments/remove", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/attachments/remove", {
         method: "POST",
         body: JSON.stringify({ card_id: cardId, attachment_id: attachmentId }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to remove attachment')
+      }
+      return response.data
     } catch (error) {
       this.logError('removeAttachment', error)
       throw error
@@ -175,10 +203,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('updateTimeTracking', { cardId, ...data })
     
     try {
-      return await this.request<Card>("/cards/time-tracking", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/time-tracking", {
         method: "PUT",
         body: JSON.stringify({ card_id: cardId, ...data }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to update time tracking')
+      }
+      return response.data
     } catch (error) {
       this.logError('updateTimeTracking', error)
       throw error
@@ -190,10 +222,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('updateChecklist', { cardId, checklist })
     
     try {
-      return await this.request<Card>("/cards/checklist", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/checklist", {
         method: "PUT",
         body: JSON.stringify({ card_id: cardId, checklist }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to update checklist')
+      }
+      return response.data
     } catch (error) {
       this.logError('updateChecklist', error)
       throw error
@@ -205,10 +241,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('addTag', { cardId, tag })
     
     try {
-      return await this.request<Card>("/cards/tags/add", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/tags/add", {
         method: "POST",
         body: JSON.stringify({ card_id: cardId, tag }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to add tag')
+      }
+      return response.data
     } catch (error) {
       this.logError('addTag', error)
       throw error
@@ -219,10 +259,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('removeTag', { cardId, tag })
     
     try {
-      return await this.request<Card>("/cards/tags/remove", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/tags/remove", {
         method: "POST",
         body: JSON.stringify({ card_id: cardId, tag }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to remove tag')
+      }
+      return response.data
     } catch (error) {
       this.logError('removeTag', error)
       throw error
@@ -234,10 +278,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('setStartDate', { cardId, startDate })
     
     try {
-      return await this.request<Card>("/cards/start-date", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/start-date", {
         method: "PUT",
         body: JSON.stringify({ card_id: cardId, start_date: startDate }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to set start date')
+      }
+      return response.data
     } catch (error) {
       this.logError('setStartDate', error)
       throw error
@@ -248,10 +296,14 @@ export class CardClient extends BaseClient {
     this.logMethodCall('setCompletionDate', { cardId, completionDate })
     
     try {
-      return await this.request<Card>("/cards/completion-date", {
+      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/completion-date", {
         method: "PUT",
         body: JSON.stringify({ card_id: cardId, completion_date: completionDate }),
       })
+      if (response.error_code !== 0) {
+        throw new Error(response.message || 'Failed to set completion date')
+      }
+      return response.data
     } catch (error) {
       this.logError('setCompletionDate', error)
       throw error

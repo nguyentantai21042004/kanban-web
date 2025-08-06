@@ -1,6 +1,6 @@
 export interface List {
   id: string
-  title: string
+  name: string // Changed from title to name to match swagger
   board_id: string
   position: number
   created_at: string
@@ -9,26 +9,27 @@ export interface List {
 }
 
 export interface CreateListRequest {
-  title: string
+  name: string // Changed from title to name to match swagger
   board_id: string
   position?: number
 }
 
 export interface UpdateListRequest {
   id: string
-  title?: string
+  name?: string // Changed from title to name to match swagger
   position?: number
 }
 
 export interface GetListResponse {
-  success: boolean
+  error_code: number // Changed from success to error_code to match swagger
   message: string
   data: {
     items: List[]
     meta: {
+      count: number
+      current_page: number
+      per_page: number
       total: number
-      page: number
-      limit: number
       total_pages: number
     }
   }

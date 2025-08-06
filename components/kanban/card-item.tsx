@@ -75,7 +75,7 @@ export function CardItem({
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <h4 className="text-sm font-medium leading-tight pr-2">{card.title}</h4>
+          <h4 className="text-sm font-medium leading-tight pr-2">{card.name}</h4>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
