@@ -3,6 +3,9 @@ const nextConfig = {
     // Enable standalone output for Docker
     output: 'standalone',
 
+    // Disable React StrictMode to prevent WebSocket connection issues in development
+    reactStrictMode: false,
+
     // Ignore TypeScript errors during build
     typescript: {
         ignoreBuildErrors: true,

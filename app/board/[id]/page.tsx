@@ -201,19 +201,31 @@ export default function BoardPage() {
     console.log(`🔁 useEffect triggered for boardId: ${boardId}`)
     if (boardId) {
       loadBoardData()
-      connectWebSocket()
-    }
+      
+      // Add a small delay in development mode to prevent immediate cleanup
+      const connectTimeout = setTimeout(() => {
+        connectWebSocket()
+      }, process.env.NODE_ENV === 'development' ? 100 : 0)
 
-    return () => {
-      // Cleanup WebSocket listeners
-      wsClient.off("card_created", handleCardCreated)
-      wsClient.off("card_updated", handleCardUpdated)
-      wsClient.off("card_moved", handleCardMoved)
-      wsClient.off("card_deleted", handleCardDeleted)
-      wsClient.off("list_created", handleListCreated)
-      wsClient.off("list_updated", handleListUpdated)
-      wsClient.off("list_deleted", handleListDeleted)
-      wsClient.disconnect()
+      return () => {
+        clearTimeout(connectTimeout)
+        
+        // Only disconnect if WebSocket is actually connected
+        if (wsClient.isConnected()) {
+          console.log(`🔍 [WEBSOCKET DEBUG] Component unmounting, disconnecting WebSocket`)
+          // Cleanup WebSocket listeners
+          wsClient.off("card_created", handleCardCreated)
+          wsClient.off("card_updated", handleCardUpdated)
+          wsClient.off("card_moved", handleCardMoved)
+          wsClient.off("card_deleted", handleCardDeleted)
+          wsClient.off("list_created", handleListCreated)
+          wsClient.off("list_updated", handleListUpdated)
+          wsClient.off("list_deleted", handleListDeleted)
+          wsClient.disconnect()
+        } else {
+          console.log(`🔍 [WEBSOCKET DEBUG] Component unmounting, WebSocket not connected, skipping disconnect`)
+        }
+      }
     }
   }, [boardId, loadBoardData, connectWebSocket]) // Only include callbacks as deps
 
