@@ -19,7 +19,7 @@ export function useDragDrop() {
   })
 
   const handleDragStart = useCallback((card: Card) => {
-    console.log(`🎯 Drag started: ${card.title}`)
+    console.log(`🎯 Drag started: ${card.name || 'Untitled'}`)
     setDragState({
       draggedCard: card,
       draggedOverList: null,

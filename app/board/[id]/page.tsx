@@ -96,7 +96,18 @@ export default function BoardPage() {
 
       setBoard(boardData)
       setLists(listsData.data?.items || []) // No need to filter, already filtered by API
-      setCards(cardsData.data?.items || [])
+      
+      const cards = cardsData.data?.items || []
+      console.log("🔍 Raw cards from API:", cards)
+      console.log("🔍 First card structure:", cards[0])
+      
+      // Normalize cards to ensure they have list_id for consistent access
+      const normalizedCards = cards.map(card => ({
+        ...card,
+        list_id: card.list_id || card.list?.id
+      }))
+      
+      setCards(normalizedCards)
       setLabels(labelsData.data?.items || []) // No need to filter, already filtered by API
       // Remove users API call since endpoint doesn't exist
       setUsers([])
@@ -129,26 +140,28 @@ export default function BoardPage() {
   }, [boardId]) // Only depend on boardId to avoid circular dependencies
 
   // WebSocket event handlers
-  const handleCardCreated = useCallback(
-    (card: Card) => {
-      console.log("📥 Received card_created WebSocket event:", card)
-      setCards((prev) => {
-        // Check if card already exists to prevent duplicates
-        const exists = prev.some((c) => c.id === card.id)
-        if (exists) {
-          console.log("⚠️ Card already exists, skipping:", card.id)
-          return prev
-        }
-        console.log("✅ Adding card from WebSocket:", card)
-        return [...prev, card]
-      })
-      toast({
-        title: "Card mới được tạo",
-        description: `"${card.name}" đã được thêm vào board`,
-      })
-    },
-    [toast],
-  )
+  const handleCardCreated = useCallback((card: Card) => {
+    console.log(`📥 Received card_created WebSocket event:`, card)
+    
+    setCards((prev) => {
+      // Check if card already exists to prevent duplicates
+      const existingCard = prev.find((c) => c.id === card.id)
+      
+      if (existingCard) {
+        console.log(`⚠️ Card already exists in state, skipping:`, card.id)
+        return prev
+      }
+      
+      // Normalize card to ensure list_id is available
+      const normalizedCard = {
+        ...card,
+        list_id: card.list_id || card.list?.id
+      }
+      
+      console.log(`✅ Adding card from WebSocket:`, normalizedCard)
+      return [...prev, normalizedCard]
+    })
+  }, [])
 
   const handleCardUpdated = useCallback((card: Card) => {
     setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)))
@@ -156,12 +169,41 @@ export default function BoardPage() {
 
   const handleCardMoved = useCallback((card: Card) => {
     console.log(`📥 Received card_moved event:`, card)
+    console.log(`📋 Card details - ID: ${card.id}, Name: ${card.name}, New List: ${card.list_id || card.list?.id}`)
+    
+    // WebSocket event received - no timeout clearing needed since we removed fallback timeout
     
     setCards((prev) => {
-      // Remove card from current position first
-      const withoutCard = prev.filter((c) => c.id !== card.id)
-      // Add card to new position
-      return [...withoutCard, card]
+      // Find existing card
+      const existingCard = prev.find((c) => c.id === card.id)
+      
+      if (!existingCard) {
+        console.log(`⚠️ Card not found in state, adding new card:`, card.id)
+        // Normalize card before adding
+        const normalizedCard = {
+          ...card,
+          list_id: card.list_id || card.list?.id
+        }
+        return [...prev, normalizedCard]
+      }
+      
+      // Update existing card with new data, preserving any missing fields
+      console.log(`🔄 Updating existing card:`, card.id)
+      console.log(`📍 Moving from list ${existingCard.list_id || existingCard.list?.id} to list ${card.list_id || card.list?.id}`)
+      
+      const updatedCard = {
+        ...existingCard,
+        ...card,
+        // FIXED: Always update list object to match new list_id
+        list: card.list_id ? { id: card.list_id, name: card.list?.name || existingCard.list?.name } : (card.list || existingCard.list),
+        list_id: card.list_id || card.list?.id || existingCard.list_id
+      }
+      
+      console.log(`✅ Card updated successfully:`, updatedCard)
+      console.log(`🔍 Updated card list_id:`, updatedCard.list_id)
+      console.log(`🔍 Updated card list:`, updatedCard.list)
+      
+      return prev.map((c) => (c.id === card.id ? updatedCard : c))
     })
   }, [])
 
@@ -193,7 +235,11 @@ export default function BoardPage() {
 
   const handleListDeleted = useCallback((listId: string) => {
     setLists((prev) => prev.filter((l) => l.id !== listId))
-    setCards((prev) => prev.filter((c) => c.list.id !== listId))
+    setCards((prev) => prev.filter((c) => {
+      // Handle both card.list.id and card.list_id formats
+      const cardListId = c.list?.id || c.list_id
+      return cardListId !== listId
+    }))
   }, [])
 
   // Load data - useEffect placed after all handlers to avoid dependency issues
@@ -274,25 +320,10 @@ export default function BoardPage() {
         const newCard = (response as any).data || response
         console.log("📝 Extracted card data:", newCard)
         
-        // Add to state immediately for optimistic update
-        setCards((prev) => {
-          console.log("📝 Adding card to state:", newCard)
-          return [...prev, newCard]
-        })
+        // DON'T add to state here - let WebSocket event handle it to avoid duplicates
+        // The card will be added via handleCardCreated when WebSocket event is received
         
-        // Send WebSocket event for real-time updates
-        if (wsClient.isConnected()) {
-          console.log("📤 Sending WebSocket card_created event")
-          wsClient.send({
-            type: "card_created",
-            data: newCard,
-            board_id: boardId,
-            user_id: user?.id || "",
-            timestamp: new Date().toISOString()
-          })
-        } else {
-          console.log("❌ WebSocket not connected")
-        }
+        // Note: Backend will broadcast the card_created event automatically
         
         toast({
           title: "Tạo thành công",
@@ -402,7 +433,11 @@ export default function BoardPage() {
     try {
       await apiClient.lists.deleteLists([listId])
       setLists((prev) => prev.filter((l) => l.id !== listId))
-      setCards((prev) => prev.filter((c) => c.list.id !== listId))
+      setCards((prev) => prev.filter((c) => {
+        // Handle both card.list.id and card.list_id formats
+        const cardListId = c.list?.id || c.list_id
+        return cardListId !== listId
+      }))
       
       // Note: Don't send WebSocket event here because we already removed the list from state
       // The WebSocket event will be handled by handleListDeleted if other users delete lists
@@ -449,60 +484,45 @@ export default function BoardPage() {
   const handleDrop = async (listId: string, position: number) => {
     if (!draggedCard) return
 
-    try {
-      // Store original state for rollback
-      const originalCards = [...cards]
-      
-      // Optimistic update - just move the card visually without calculating positions
-      setCards((prev) => {
-        const updatedCards = prev.map((c) => 
-          c.id === draggedCard.id 
-            ? { ...c, list_id: listId }
-            : c
-        )
-        return updatedCards
-      })
+    console.log(`🎯 handleDrop called - Card: ${draggedCard.name}`)
+    console.log(`🔍 Full draggedCard structure:`, draggedCard)
+    console.log(`📍 From: ${draggedCard.list_id || draggedCard.list?.id || 'UNDEFINED'}, To: ${listId}`)
 
+    const currentListId = draggedCard.list_id || draggedCard.list?.id
+    
+    // If same list, just end drag
+    if (currentListId === listId) {
+      console.log("📍 Same list - no movement needed")
+      handleDragEnd()
+      return
+    }
+
+    try {
       // Call API to update server - let backend calculate the actual position
+      console.log(`📡 Calling moveCard API:`, {
+        id: draggedCard.id,
+        list_id: listId,
+        position: 0
+      })
+      
       const response = await apiClient.cards.moveCard({
         id: draggedCard.id,
         list_id: listId,
         position: 0, // Send 0 to let backend calculate the best position
       })
-      const updatedCard = (response as any).data || response
+      console.log("✅ Card moved successfully via API:", response)
 
-      // Update with server response (which has the actual calculated position)
-      setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
+      // DON'T update state here - let WebSocket event handle it to avoid conflicts
+      // The card will be updated via handleCardMoved when WebSocket event is received
+      
+      // Note: Backend will broadcast the card_moved event automatically
+      console.log("⏳ Waiting for WebSocket card_moved event...")
+      
+      // DON'T use fallback timeout since WebSocket is working properly
+      // The card will be updated via handleCardMoved when WebSocket event is received
 
-      // Send websocket event for real-time updates
-      if (wsClient.isConnected()) {
-        wsClient.send({
-          type: "card_moved",
-          data: {
-            id: updatedCard.id,
-            list_id: updatedCard.list_id,
-            position: updatedCard.position,
-            name: updatedCard.name,
-            description: updatedCard.description,
-            priority: updatedCard.priority,
-            labels: updatedCard.labels,
-            due_date: updatedCard.due_date,
-            is_archived: updatedCard.is_archived,
-            created_at: updatedCard.created_at,
-            updated_at: updatedCard.updated_at,
-          },
-          board_id: boardId,
-          user_id: user?.id || "",
-          timestamp: new Date().toISOString(),
-        })
-      } else {
-        console.warn("WebSocket not connected, cannot send message")
-      }
     } catch (error: any) {
       console.error(`❌ Failed to move card:`, error)
-      
-      // Revert optimistic update on error - reload data from server
-      loadBoardData()
       
       toast({
         title: "Lỗi",
@@ -567,30 +587,52 @@ export default function BoardPage() {
       {/* Board content */}
       <div className="p-6">
         <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
-          {lists.map((list) => (
-            <ListColumn
-              key={list.id || `list-${list.position}-${list.name}`}
-              list={list}
-              cards={cards.filter((card) => card.list.id === list.id)}
-              labels={labels}
-              users={users}
-              onAddCard={handleAddCard}
-              onEditCard={handleEditCard}
-              onDeleteCard={handleDeleteCard}
-              onEditList={handleEditList}
-              onDeleteList={handleDeleteList}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              draggedCard={draggedCard}
-              draggedOverList={draggedOverList}
-              onCardClick={handleCardClick}
-              isDraggingOver={isDraggingOver}
-              getDropPosition={getDropPosition}
-            />
-          ))}
+          {lists.map((list) => {
+            const listCards = cards.filter((card) => {
+              // FIXED: Prioritize card.list_id over card.list?.id because list_id is always up-to-date
+              const cardListId = card.list_id || card.list?.id
+              const matches = cardListId === list.id
+              
+              if (card.name === 'smap') {
+                console.log(`🔍 Filtering card "${card.name}" (${card.id}):`)
+                console.log(`  - card.list_id: ${card.list_id}`)
+                console.log(`  - card.list?.id: ${card.list?.id}`)
+                console.log(`  - cardListId: ${cardListId}`)
+                console.log(`  - list.id: ${list.id}`)
+                console.log(`  - matches: ${matches}`)
+              }
+              
+              return matches
+            })
+            
+            console.log(`📋 List ${list.name} (${list.id}) has ${listCards.length} cards:`, 
+              listCards.map(c => ({ id: c.id, name: c.name, position: c.position })))
+            
+            return (
+              <ListColumn
+                key={list.id || `list-${list.position}-${list.name}`}
+                list={list}
+                cards={listCards}
+                labels={labels}
+                users={users}
+                onAddCard={handleAddCard}
+                onEditCard={handleEditCard}
+                onDeleteCard={handleDeleteCard}
+                onEditList={handleEditList}
+                onDeleteList={handleDeleteList}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                draggedCard={draggedCard}
+                draggedOverList={draggedOverList}
+                onCardClick={handleCardClick}
+                isDraggingOver={isDraggingOver}
+                getDropPosition={getDropPosition}
+              />
+            )
+          })}
 
           {/* Add List Button */}
           <div className="w-80 flex-shrink-0">

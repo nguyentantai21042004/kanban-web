@@ -89,7 +89,11 @@ export function BoardDashboard({
   // List breakdown
   const listBreakdown = lists.map(list => ({
     list,
-    cardCount: cards.filter(card => card.list_id === list.id).length
+    cardCount: cards.filter(card => {
+      // Handle both card.list.id and card.list_id formats
+      const cardListId = card.list?.id || card.list_id
+      return cardListId === list.id
+    }).length
   }))
 
   return (

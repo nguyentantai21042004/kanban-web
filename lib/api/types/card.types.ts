@@ -5,10 +5,11 @@ export interface Card {
   name: string // Changed from title to name to match swagger
   alias: string
   description?: string
-  list: {
+  list?: {
     id: string
     name: string
   }
+  list_id?: string // Optional field for API responses that use list_id instead of list object
   position: number
   priority?: CardPriority
   assigned_to?: string
