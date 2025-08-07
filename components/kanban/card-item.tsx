@@ -50,7 +50,7 @@ export function CardItem({
 }: CardItemProps) {
   const cardLabels = labels.filter((label) => card.labels?.includes(label.id))
   const assignedUser = users.find(user => user.id === card.assigned_to)
-  const completedChecklistItems = card.checklist?.filter(item => item.completed).length || 0
+  const completedChecklistItems = card.checklist?.filter(item => item.is_completed).length || 0
   const totalChecklistItems = card.checklist?.length || 0
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -61,12 +61,12 @@ export function CardItem({
 
   return (
     <Card
-      className={`cursor-pointer transition-all duration-300 hover:shadow-sm group ${
+      className={`cursor-pointer transition-all duration-200 hover:shadow-sm group ${
         isDragging 
-          ? "opacity-50 rotate-1 scale-95 shadow-xl border-blue-300" 
+          ? "opacity-50 shadow-lg border-blue-300" 
           : isDraggedOver
-          ? "ring-2 ring-purple-500 bg-purple-50 shadow-xl scale-105 border-purple-300"
-          : "hover:shadow-md hover:scale-[1.02]"
+          ? "ring-1 ring-blue-400 bg-blue-50"
+          : "hover:shadow-md hover:scale-[1.01]"
       }`}
       draggable
       onDragStart={handleDragStart}
@@ -173,13 +173,13 @@ export function CardItem({
           </div>
         )}
 
-        {/* Comments */}
-        {card.comments && card.comments.length > 0 && (
+        {/* Comments - commented out since not in Card type */}
+        {/* {card.comments && card.comments.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <MessageSquare className="h-3 w-3" />
             <span>{card.comments.length} bình luận</span>
           </div>
-        )}
+        )} */}
 
         {/* Priority and Due Date */}
         <div className="flex items-center justify-between text-xs">

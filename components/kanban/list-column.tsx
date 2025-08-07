@@ -69,34 +69,24 @@ export function ListColumn({
     
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
-    const headerHeight = 60 // Card header height
-    const cardSpacing = 12 // Space between cards
-    const cardHeight = 100 // Card height including spacing
+    const headerHeight = 80 // Card header height
+    const cardSpacing = 24 // Increased spacing between cards
+    const cardHeight = 140 // Increased card height for better targeting
     const totalCardHeight = cardHeight + cardSpacing
     
-    // Calculate position based on actual card positions
+    // Calculate position with enhanced drop zones
     let position = 0
     if (y > headerHeight) {
       const cardAreaY = y - headerHeight
-      position = Math.floor(cardAreaY / totalCardHeight)
+      
+      // Create larger drop zones between cards
+      const rawPosition = cardAreaY / totalCardHeight
+      
+      // Expand drop zone around each position (±0.3 range)
+      const dropZoneSize = 0.3
+      position = Math.round(rawPosition - dropZoneSize) + dropZoneSize
       position = Math.max(0, Math.min(position, cards.length))
-    }
-    
-    // Enhanced visual feedback for top position
-    const isNearTop = y < headerHeight + 30
-    const isNearBottom = y > rect.height - 30
-    
-    // Auto-scroll when near edges
-    if (isNearTop) {
-      const container = e.currentTarget.closest('.board-container')
-      if (container) {
-        container.scrollLeft -= 10
-      }
-    } else if (isNearBottom) {
-      const container = e.currentTarget.closest('.board-container')
-      if (container) {
-        container.scrollLeft += 10
-      }
+      position = Math.round(position)
     }
     
     onDragOver(list.id, undefined, position)
@@ -106,17 +96,22 @@ export function ListColumn({
     e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
-    const headerHeight = 60 // Card header height
-    const cardSpacing = 12 // Space between cards
-    const cardHeight = 100 // Card height including spacing
+    const headerHeight = 80 // Card header height (consistent with dragOver)
+    const cardSpacing = 24 // Spacing between cards (consistent with dragOver)
+    const cardHeight = 140 // Card height (consistent with dragOver)
     const totalCardHeight = cardHeight + cardSpacing
     
-    // Calculate position based on actual card positions
+    // Calculate position with same logic as dragOver
     let position = 0
     if (y > headerHeight) {
       const cardAreaY = y - headerHeight
-      position = Math.floor(cardAreaY / totalCardHeight)
+      
+      // Use same enhanced drop zone calculation
+      const rawPosition = cardAreaY / totalCardHeight
+      const dropZoneSize = 0.3
+      position = Math.round(rawPosition - dropZoneSize) + dropZoneSize
       position = Math.max(0, Math.min(position, cards.length))
+      position = Math.round(position)
     }
     
     onDrop(list.id, position)
@@ -139,9 +134,9 @@ export function ListColumn({
 
   return (
     <Card
-      className={`w-80 flex-shrink-0 transition-all duration-300 ${
+      className={`w-80 flex-shrink-0 transition-all duration-200 ${
         isDraggedOverThis 
-          ? "ring-2 ring-blue-500 bg-blue-50 shadow-xl scale-105 border-blue-300" 
+          ? "ring-2 ring-blue-400 bg-blue-50 shadow-lg" 
           : "hover:shadow-md"
       }`}
       onDragOver={handleDragOver}
@@ -191,16 +186,14 @@ export function ListColumn({
       </CardHeader>
 
       <CardContent className="pt-0 pb-4">
-        {/* Top drop zone indicator */}
+        {/* Enhanced top drop zone indicator */}
         {isDraggedOverThis && dropPosition === 0 && (
-          <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse mb-3 transition-all duration-300 shadow-lg relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
-          </div>
+          <div className="h-3 bg-blue-500 rounded mb-3 mx-2 transition-all duration-200"></div>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-4">
           {sortedCards.map((card, index) => (
-            <div key={card.id}>
+            <div key={card.id} className="relative">
               <CardItem
                 card={card}
                 labels={labels}
@@ -214,21 +207,23 @@ export function ListColumn({
                 isDraggedOver={isDraggedOverThis && dropPosition === index + 1}
               />
               
-              {/* Drop zone indicator between cards */}
+              {/* Enhanced drop zone between cards */}
               {isDraggedOverThis && dropPosition === index + 1 && (
-                <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse my-2 transition-all duration-300 shadow-lg relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
-                </div>
+                <div className="h-3 bg-blue-500 rounded my-3 transition-all duration-200 mx-2"></div>
               )}
+              
+              {/* Invisible drop zone extender for better UX */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-6 transform translate-y-full pointer-events-none"
+                style={{ zIndex: -1 }}
+              />
             </div>
           ))}
         </div>
 
-        {/* Bottom drop zone indicator */}
-        {isDraggedOverThis && dropPosition === cards.length && cards.length > 0 && (
-          <div className="h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-90 animate-pulse mt-3 transition-all duration-300 shadow-lg relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-ping" />
-          </div>
+        {/* Enhanced bottom drop zone indicator */}
+        {isDraggedOverThis && dropPosition === cards.length && (
+          <div className="h-3 bg-blue-500 rounded mt-3 mx-2 transition-all duration-200"></div>
         )}
 
         <Button
