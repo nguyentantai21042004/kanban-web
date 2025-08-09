@@ -18,7 +18,11 @@ import { useToast } from "@/hooks/use-toast"
 import { ListColumn } from "@/components/kanban/list-column"
 import { CardForm, type CardFormData } from "@/components/kanban/card-form"
 import { CardDetailSidebar } from "@/components/kanban/card-detail-sidebar"
+
 import { useDragDrop } from "@/lib/use-drag-drop"
+import { useEnhancedDragDrop } from "@/lib/use-enhanced-drag-drop"
+import { PositionManager } from "@/lib/position-manager"
+import { positionConfigManager } from "@/lib/config/position-config"
 import { useAuth } from "@/lib/auth-context"
 import { apiClient } from "@/lib/api/index"
 import { wsClient } from "@/lib/websocket"
@@ -57,7 +61,31 @@ export default function BoardPage() {
   const [isDeleteBoardDialogOpen, setIsDeleteBoardDialogOpen] = useState(false)
   const [isDeletingBoard, setIsDeletingBoard] = useState(false)
 
-  // Drag and drop
+
+
+  // Enhanced drag and drop with advanced position management
+  const {
+    handleDragStart: enhancedDragStart,
+    handleDragEnd: enhancedDragEnd,
+    handleDragOver: enhancedDragOver,
+    handleDragLeave: enhancedDragLeave,
+    isDraggingOver: enhancedIsDraggingOver,
+    isDragging: enhancedIsDragging,
+    draggedCard: enhancedDraggedCard,
+    draggedOverList: enhancedDraggedOverList,
+    calculateDropPosition,
+    executeOptimisticMove,
+    rollbackFailedMove,
+    getPerformanceMetrics,
+    hasPendingMove
+  } = useEnhancedDragDrop({
+    // Load optimal configuration from position config
+    enableOptimisticUpdates: true,
+    showDropIndicators: true
+    // debounceMs will be auto-loaded from position config
+  })
+
+  // Fallback to simple drag drop for backward compatibility
   const { 
     handleDragStart, 
     handleDragEnd, 
@@ -83,6 +111,13 @@ export default function BoardPage() {
 
   const loadBoardData = useCallback(async () => {
     console.log(`🔄 loadBoardData called for boardId: ${boardId}`)
+    
+    // Enable debug logging for enhanced position calculation
+    if (typeof window !== 'undefined') {
+      positionConfigManager.updateConfig({ enableDebugLogging: true })
+      console.log('🎯 Enhanced position system activated with debug logging')
+    }
+    
     try {
       setIsLoading(true)
       setError("")
@@ -180,9 +215,10 @@ export default function BoardPage() {
       if (!existingCard) {
         console.log(`⚠️ Card not found in state, adding new card:`, card.id)
         // Normalize card before adding
-        const normalizedCard = {
+        const normalizedCard: Card = {
           ...card,
-          list_id: card.list_id || card.list?.id
+          list_id: card.list_id || card.list?.id,
+          list: card.list || { id: card.list_id || 'unknown', name: 'Unknown List' }
         }
         return [...prev, normalizedCard]
       }
@@ -191,11 +227,11 @@ export default function BoardPage() {
       console.log(`🔄 Updating existing card:`, card.id)
       console.log(`📍 Moving from list ${existingCard.list_id || existingCard.list?.id} to list ${card.list_id || card.list?.id}`)
       
-      const updatedCard = {
+      const updatedCard: Card = {
         ...existingCard,
         ...card,
         // FIXED: Always update list object to match new list_id
-        list: card.list_id ? { id: card.list_id, name: card.list?.name || existingCard.list?.name } : (card.list || existingCard.list),
+        list: card.list_id ? { id: card.list_id, name: card.list?.name || existingCard.list?.name || 'Unknown List' } : (card.list || existingCard.list),
         list_id: card.list_id || card.list?.id || existingCard.list_id
       }
       
@@ -480,35 +516,179 @@ export default function BoardPage() {
     }
   }
 
-  // Drag and drop
+  // Enhanced drag and drop
+  const handleDropEnhanced = async (listId: string, dropIndex: number) => {
+    if (!enhancedDraggedCard) return
+
+    console.log(`🎯 Enhanced drop handler:`, {
+      cardId: enhancedDraggedCard.id,
+      targetListId: listId,
+      dropIndex,
+      totalCards: cards.length
+    })
+
+    try {
+      // Calculate optimal position using enhanced algorithm
+      console.log(`🎯 Calling calculateDropPosition with:`, {
+        listId,
+        dropIndex,
+        cardsCount: cards.length,
+        draggedCardId: enhancedDraggedCard.id
+      })
+      
+      const positionResult = calculateDropPosition(listId, dropIndex, cards)
+      console.log(`📍 Position result:`, positionResult)
+      
+      if (!positionResult) {
+        console.error(`❌ Position calculation failed for:`, {
+          listId,
+          dropIndex,
+          draggedCardId: enhancedDraggedCard.id,
+          cards: cards.map(c => ({ 
+            id: c.id, 
+            name: c.name, 
+            listId: c.list?.id || c.list_id, 
+            position: c.position 
+          }))
+        })
+        throw new Error("Failed to calculate drop position")
+      }
+
+      console.log(`📍 Calculated position:`, {
+        position: positionResult.position,
+        confidence: positionResult.confidence,
+        needsValidation: positionResult.needsServerValidation
+      })
+
+      // API call function - convert fractional position to number for API compatibility
+      const apiCall = async (optimisticCard: Card) => {
+        // Convert fractional position to decimal number for API
+        const numericPosition = PositionManager.positionToNumber(positionResult.position)
+        
+        console.log(`🔢 Position conversion:`, {
+          fractionalPosition: positionResult.position,
+          numericPosition,
+          confidence: positionResult.confidence
+        })
+        
+        const response = await apiClient.cards.moveCard({
+          id: optimisticCard.id,
+          list_id: listId,
+          position: numericPosition
+        })
+        return (response as any).data || response
+      }
+
+      // Execute with optimistic updates
+      const result = await executeOptimisticMove(
+        listId,
+        dropIndex,
+        cards,
+        apiCall
+      )
+
+      if (result) {
+        console.log(`✅ Enhanced move completed:`, {
+          cardId: result.id,
+          fractionalPosition: positionResult.position,
+          finalNumericPosition: result.position,
+          confidence: positionResult.confidence,
+          needsServerValidation: positionResult.needsServerValidation,
+          performance: getPerformanceMetrics()
+        })
+
+        toast({
+          title: "Di chuyển thành công",
+          description: `"${result.name}" đã được di chuyển`,
+        })
+      }
+
+    } catch (error: any) {
+      console.error(`❌ Enhanced move failed:`, error)
+      
+      // Rollback failed move
+      const rolledBackCard = rollbackFailedMove(enhancedDraggedCard.id)
+      if (rolledBackCard) {
+        setCards((prev) => prev.map((c) => (c.id === rolledBackCard.id ? rolledBackCard : c)))
+      }
+      
+      toast({
+        title: "Lỗi",
+        description: "Không thể di chuyển card",
+        variant: "destructive",
+      })
+    }
+
+    enhancedDragEnd()
+  }
+
+  // Legacy drag and drop (current implementation)
   const handleDrop = async (listId: string, position: number) => {
     if (!draggedCard) return
 
     console.log(`🎯 handleDrop called - Card: ${draggedCard.name}`)
     console.log(`🔍 Full draggedCard structure:`, draggedCard)
     console.log(`📍 From: ${draggedCard.list_id || draggedCard.list?.id || 'UNDEFINED'}, To: ${listId}`)
+    console.log(`📍 Position: ${position}`)
 
     const currentListId = draggedCard.list_id || draggedCard.list?.id
     
-    // If same list, just end drag
-    if (currentListId === listId) {
-      console.log("📍 Same list - no movement needed")
+    // Calculate the actual position considering other cards
+    const targetListCards = cards.filter(card => 
+      (card.list_id || card.list?.id) === listId && card.id !== draggedCard.id
+    )
+    
+    // Sort cards by position to get correct ordering
+    targetListCards.sort((a, b) => (a.position || 0) - (b.position || 0))
+    
+    console.log(`📍 Target list cards:`, targetListCards.map(c => ({ 
+      id: c.id, 
+      name: c.name, 
+      position: c.position 
+    })))
+    console.log(`📍 Drop position: ${position} (out of ${targetListCards.length})`)
+    
+    let finalPosition: number
+    
+    if (targetListCards.length === 0) {
+      // Empty list - use position 1000
+      finalPosition = 1000
+      console.log(`📍 Empty list -> position: ${finalPosition}`)
+    } else if (position === 0) {
+      // Drop at beginning - position before first card
+      finalPosition = Math.max(0, (targetListCards[0]?.position || 1000) - 1000)
+      console.log(`📍 Drop at beginning -> position: ${finalPosition}`)
+    } else if (position >= targetListCards.length) {
+      // Drop at end - position after last card
+      finalPosition = (targetListCards[targetListCards.length - 1]?.position || 0) + 1000
+      console.log(`📍 Drop at end -> position: ${finalPosition}`)
+    } else {
+      // Drop between cards - position between two cards
+      const prevCard = targetListCards[position - 1]
+      const nextCard = targetListCards[position]
+      finalPosition = ((prevCard?.position || 0) + (nextCard?.position || 1000)) / 2
+      console.log(`📍 Drop between cards -> prev: ${prevCard?.position}, next: ${nextCard?.position}, final: ${finalPosition}`)
+    }
+
+    // Check if this is the same position and list (no actual change)
+    if (currentListId === listId && Math.abs((draggedCard.position || 0) - finalPosition) < 1) {
+      console.log("📍 Same position - no movement needed")
       handleDragEnd()
       return
     }
 
     try {
-      // Call API to update server - let backend calculate the actual position
+      // Call API to update server with calculated position
       console.log(`📡 Calling moveCard API:`, {
         id: draggedCard.id,
         list_id: listId,
-        position: 0
+        position: finalPosition
       })
       
       const response = await apiClient.cards.moveCard({
         id: draggedCard.id,
         list_id: listId,
-        position: 0, // Send 0 to let backend calculate the best position
+        position: finalPosition,
       })
       console.log("✅ Card moved successfully via API:", response)
 
@@ -588,22 +768,17 @@ export default function BoardPage() {
       <div className="p-6">
         <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
           {lists.map((list) => {
-            const listCards = cards.filter((card) => {
-              // FIXED: Prioritize card.list_id over card.list?.id because list_id is always up-to-date
-              const cardListId = card.list_id || card.list?.id
-              const matches = cardListId === list.id
-              
-              if (card.name === 'smap') {
-                console.log(`🔍 Filtering card "${card.name}" (${card.id}):`)
-                console.log(`  - card.list_id: ${card.list_id}`)
-                console.log(`  - card.list?.id: ${card.list?.id}`)
-                console.log(`  - cardListId: ${cardListId}`)
-                console.log(`  - list.id: ${list.id}`)
-                console.log(`  - matches: ${matches}`)
-              }
-              
-              return matches
-            })
+            const listCards = cards
+              .filter((card) => {
+                // FIXED: Prioritize card.list_id over card.list?.id because list_id is always up-to-date
+                const cardListId = card.list_id || card.list?.id
+                const matches = cardListId === list.id
+                
+                // Debug logging removed - position logic now handles card movements properly
+                
+                return matches
+              })
+              .sort((a, b) => (a.position || 0) - (b.position || 0)) // Sort by position
             
             console.log(`📋 List ${list.name} (${list.id}) has ${listCards.length} cards:`, 
               listCards.map(c => ({ id: c.id, name: c.name, position: c.position })))
@@ -620,16 +795,16 @@ export default function BoardPage() {
                 onDeleteCard={handleDeleteCard}
                 onEditList={handleEditList}
                 onDeleteList={handleDeleteList}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                draggedCard={draggedCard}
-                draggedOverList={draggedOverList}
+                onDragStart={enhancedDragStart}
+                onDragEnd={enhancedDragEnd}
+                onDragOver={(listId, cardId, position) => enhancedDragOver(listId, position)}
+                onDragLeave={enhancedDragLeave}
+                onDrop={handleDropEnhanced}
+                draggedCard={enhancedDraggedCard}
+                draggedOverList={enhancedDraggedOverList}
                 onCardClick={handleCardClick}
-                isDraggingOver={isDraggingOver}
-                getDropPosition={getDropPosition}
+                isDraggingOver={enhancedIsDraggingOver}
+                getDropPosition={(listId) => enhancedIsDraggingOver(listId) ? 0 : null}
               />
             )
           })}
@@ -717,6 +892,8 @@ export default function BoardPage() {
         onUpdate={handleCardUpdate}
         users={users}
       />
+
+
 
       {/* Delete Board Dialog */}
       <Dialog open={isDeleteBoardDialogOpen} onOpenChange={setIsDeleteBoardDialogOpen}>
