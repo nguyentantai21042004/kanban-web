@@ -61,6 +61,11 @@ export default function BoardPage() {
   const [isDeleteBoardDialogOpen, setIsDeleteBoardDialogOpen] = useState(false)
   const [isDeletingBoard, setIsDeletingBoard] = useState(false)
 
+  // Delete list dialog
+  const [isDeleteListDialogOpen, setIsDeleteListDialogOpen] = useState(false)
+  const [listToDelete, setListToDelete] = useState<List | null>(null)
+  const [isDeletingList, setIsDeletingList] = useState(false)
+
 
 
   // Enhanced drag and drop with advanced position management
@@ -158,6 +163,9 @@ export default function BoardPage() {
     console.log(`🌐 connectWebSocket called for boardId: ${boardId}`)
     try {
       await wsClient.connect(boardId)
+      console.log(`✅ WebSocket connected successfully`)
+      
+      console.log(`🔍 Registering WebSocket event listeners...`)
       
       // Listen for real-time updates
       wsClient.on("card_created", handleCardCreated)
@@ -167,6 +175,9 @@ export default function BoardPage() {
       wsClient.on("list_created", handleListCreated)
       wsClient.on("list_updated", handleListUpdated)
       wsClient.on("list_deleted", handleListDeleted)
+      
+      console.log(`✅ All WebSocket event listeners registered`)
+      console.log(`📡 Listening for events: card_created, card_updated, card_moved, card_deleted, list_created, list_updated, list_deleted`)
     } catch (error) {
       console.log("ℹ️ WebSocket connection skipped (optional for development)")
       // Don't show error to user, just log it
@@ -199,7 +210,23 @@ export default function BoardPage() {
   }, [])
 
   const handleCardUpdated = useCallback((card: Card) => {
-    setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)))
+    console.log(`📥 Received card_updated WebSocket event:`, card)
+    
+    setCards((prev) => {
+      const existingCard = prev.find((c) => c.id === card.id)
+      if (!existingCard) {
+        console.log(`⚠️ Card not found in state, adding new card:`, card.id)
+        // Normalize card before adding
+        const normalizedCard = {
+          ...card,
+          list_id: card.list_id || card.list?.id
+        }
+        return [...prev, normalizedCard]
+      }
+      
+      console.log(`🔄 Updating existing card:`, card.id)
+      return prev.map((c) => (c.id === card.id ? card : c))
+    })
   }, [])
 
   const handleCardMoved = useCallback((card: Card) => {
@@ -243,15 +270,31 @@ export default function BoardPage() {
     })
   }, [])
 
-  const handleCardDeleted = useCallback((cardId: string) => {
-    setCards((prev) => prev.filter((c) => c.id !== cardId))
+  const handleCardDeleted = useCallback((data: any) => {
+    // Handle both data formats: string or {id: string}
+    const cardId = typeof data === 'string' ? data : data.id
+    console.log(`📥 Received card_deleted WebSocket event for cardId:`, cardId)
+    
+    setCards((prev) => {
+      const existingCard = prev.find((c) => c.id === cardId)
+      if (!existingCard) {
+        console.log(`⚠️ Card not found in state, nothing to delete:`, cardId)
+        return prev
+      }
+      
+      console.log(`🗑️ Removing card from state:`, cardId)
+      return prev.filter((c) => c.id !== cardId)
+    })
   }, [])
 
   const handleListCreated = useCallback((list: List) => {
+    console.log(`📥 Received list_created WebSocket event:`, list)
+    
     setLists((prev) => {
       // Check if list already exists to prevent duplicates
       const exists = prev.some((l) => l.id === list.id)
       if (exists) {
+        console.log(`⚠️ List already exists in state, skipping:`, list.id)
         return prev
       }
       
@@ -261,21 +304,73 @@ export default function BoardPage() {
         name: list.name === "string" ? "Untitled List" : list.name
       }
       
+      console.log(`✅ Adding list from WebSocket:`, fixedList)
       return [...prev, fixedList]
     })
   }, [])
 
   const handleListUpdated = useCallback((list: List) => {
-    setLists((prev) => prev.map((l) => (l.id === list.id ? list : l)))
+    console.log(`📥 Received list_updated WebSocket event:`, list)
+    console.log(`🔍 List data structure:`, {
+      id: list.id,
+      name: list.name,
+      position: list.position,
+      board_id: list.board_id
+    })
+    
+    setLists((prev) => {
+      console.log(`📋 Current lists in state:`, prev.map(l => ({ id: l.id, name: l.name })))
+      
+      const existingList = prev.find((l) => l.id === list.id)
+      if (!existingList) {
+        console.log(`⚠️ List not found in state, adding new list:`, list.id)
+        return [...prev, list]
+      }
+      
+      console.log(`🔄 Updating existing list:`, {
+        old: { id: existingList.id, name: existingList.name, position: existingList.position },
+        new: { id: list.id, name: list.name, position: list.position }
+      })
+      
+      const updatedLists = prev.map((l) => (l.id === list.id ? list : l))
+      console.log(`✅ Updated lists state:`, updatedLists.map(l => ({ id: l.id, name: l.name })))
+      return updatedLists
+    })
   }, [])
 
-  const handleListDeleted = useCallback((listId: string) => {
-    setLists((prev) => prev.filter((l) => l.id !== listId))
-    setCards((prev) => prev.filter((c) => {
-      // Handle both card.list.id and card.list_id formats
-      const cardListId = c.list?.id || c.list_id
-      return cardListId !== listId
-    }))
+  const handleListDeleted = useCallback((data: any) => {
+    // Handle both data formats: string or {id: string}
+    const listId = typeof data === 'string' ? data : data.id
+    console.log(`📥 Received list_deleted WebSocket event for listId:`, listId)
+    
+    setLists((prev) => {
+      const existingList = prev.find((l) => l.id === listId)
+      if (!existingList) {
+        console.log(`⚠️ List not found in state, nothing to delete:`, listId)
+        return prev
+      }
+      
+      console.log(`🗑️ Removing list from state:`, listId)
+      return prev.filter((l) => l.id !== listId)
+    })
+    
+    setCards((prev) => {
+      const cardsToRemove = prev.filter((c) => {
+        // Handle both card.list.id and card.list_id formats
+        const cardListId = c.list?.id || c.list_id
+        return cardListId === listId
+      })
+      
+      if (cardsToRemove.length > 0) {
+        console.log(`🗑️ Removing ${cardsToRemove.length} cards from deleted list:`, listId)
+        return prev.filter((c) => {
+          const cardListId = c.list?.id || c.list_id
+          return cardListId !== listId
+        })
+      }
+      
+      return prev
+    })
   }, [])
 
   // Load data - useEffect placed after all handlers to avoid dependency issues
@@ -334,15 +429,14 @@ export default function BoardPage() {
           id: editingCard.id,
           ...data,
         })
-        const updatedCard = (response as any).data || response
-        setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)))
         
-        // Note: Don't send WebSocket event here because we already updated the card in state
-        // The WebSocket event will be handled by handleCardUpdated if other users update cards
+        // Don't update state here - let WebSocket handle it
+        // This prevents conflicts when both API response and WebSocket update state
+        // The WebSocket event will be received and handleCardUpdated will update the card
         
         toast({
           title: "Cập nhật thành công",
-          description: "Card đã được cập nhật",
+          description: "Card đang được cập nhật...",
         })
       } else {
         // Create new card
@@ -376,17 +470,14 @@ export default function BoardPage() {
     try {
       await apiClient.cards.deleteCards([cardId])
       console.log("✅ Card deleted from API")
-      setCards((prev) => {
-        console.log("📝 Removing card from state:", cardId)
-        return prev.filter((c) => c.id !== cardId)
-      })
       
-      // Note: Don't send WebSocket event here because we already removed the card from state
-      // The WebSocket event will be handled by handleCardDeleted if other users delete cards
+      // Don't update state here - let WebSocket handle it
+      // This prevents conflicts when both API response and WebSocket update state
+      // The WebSocket event will be received and handleCardDeleted will remove the card
       
       toast({
         title: "Xóa thành công",
-        description: "Card đã được xóa",
+        description: "Card đang được xóa...",
       })
     } catch (error: any) {
       console.error("❌ Delete card error:", error)
@@ -405,32 +496,25 @@ export default function BoardPage() {
 
     try {
       setIsCreatingList(true)
+      
+      // Don't add list to state immediately - wait for WebSocket event
+      // This prevents duplicate lists when both API response and WebSocket update state
+      
       const response = await apiClient.lists.createList({
         board_id: boardId,
         name: newListTitle,
         position: lists.length + 1,
       })
-      const newList = (response as any).data || response
-
-      // Use the title from form instead of API response (in case API returns "string")
-      const listWithCorrectTitle = {
-        ...newList,
-        title: newListTitle.trim()
-      }
-
-      setLists((prev) => {
-        const updatedLists = [...prev, listWithCorrectTitle]
-        return updatedLists
-      })
+      
+      // Don't update state here - let WebSocket handle it
+      // The WebSocket event will be received and handleListCreated will add the list
+      
       setNewListTitle("")
       setIsCreateListDialogOpen(false)
       
-      // Note: Don't send WebSocket event here because we already added the list to state
-      // The WebSocket event will be handled by handleListCreated if other users create lists
-
       toast({
         title: "Tạo thành công",
-        description: "List mới đã được tạo",
+        description: "List mới đang được tạo...",
       })
     } catch (error: any) {
       toast({
@@ -445,18 +529,28 @@ export default function BoardPage() {
 
   const handleEditList = async (list: List) => {
     try {
+      console.log(`🔄 Updating list via API:`, { id: list.id, name: list.name, position: list.position })
+      console.log(`🔍 WebSocket connection status:`, wsClient.isConnected())
+      
       const response = await apiClient.lists.updateList({
         id: list.id,
         name: list.name,
         position: list.position,
       })
-      const updatedList = (response as any).data || response
-
-      setLists((prev) => prev.map((l) => (l.id === updatedList.id ? updatedList : l)))
       
-      // Note: Don't send WebSocket event here because we already updated the list in state
-      // The WebSocket event will be handled by handleListUpdated if other users update lists
+      console.log(`✅ API response received:`, response)
+      console.log(`⏳ Waiting for WebSocket list_updated event...`)
+      
+      // Don't update state here - let WebSocket handle it
+      // This prevents conflicts when both API response and WebSocket update state
+      // The WebSocket event will be received and handleListUpdated will update the list
+      
+      toast({
+        title: "Cập nhật thành công",
+        description: "List đang được cập nhật...",
+      })
     } catch (error: any) {
+      console.error(`❌ Error updating list:`, error)
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật list",
@@ -465,29 +559,43 @@ export default function BoardPage() {
     }
   }
 
-  const handleDeleteList = async (listId: string) => {
-    try {
-      await apiClient.lists.deleteLists([listId])
-      setLists((prev) => prev.filter((l) => l.id !== listId))
-      setCards((prev) => prev.filter((c) => {
-        // Handle both card.list.id and card.list_id formats
-        const cardListId = c.list?.id || c.list_id
-        return cardListId !== listId
-      }))
-      
-      // Note: Don't send WebSocket event here because we already removed the list from state
-      // The WebSocket event will be handled by handleListDeleted if other users delete lists
+  const handleDeleteList = (listId: string) => {
+    // Find the list by ID to show in confirmation dialog
+    const list = lists.find(l => l.id === listId)
+    if (!list) return
+    
+    // Open delete confirmation dialog instead of deleting immediately
+    setListToDelete(list)
+    setIsDeleteListDialogOpen(true)
+  }
 
+  const confirmDeleteList = async () => {
+    if (!listToDelete) return
+    
+    try {
+      setIsDeletingList(true)
+      await apiClient.lists.deleteLists([listToDelete.id])
+      
+      // Don't update state here - let WebSocket handle it
+      // This prevents conflicts when both API response and WebSocket update state
+      // The WebSocket event will be received and handleListDeleted will remove the list
+      
       toast({
         title: "Xóa thành công",
-        description: "List đã được xóa",
+        description: "List đang được xóa...",
       })
+      
+      // Close dialog
+      setIsDeleteListDialogOpen(false)
+      setListToDelete(null)
     } catch (error: any) {
       toast({
         title: "Lỗi",
         description: "Không thể xóa list",
         variant: "destructive",
       })
+    } finally {
+      setIsDeletingList(false)
     }
   }
 
@@ -894,6 +1002,37 @@ export default function BoardPage() {
       />
 
 
+
+      {/* Delete List Dialog */}
+      <Dialog open={isDeleteListDialogOpen} onOpenChange={setIsDeleteListDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa list</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa list <strong>"{listToDelete?.name}"</strong> không? 
+              Hành động này sẽ xóa tất cả các card trong list và không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsDeleteListDialogOpen(false)
+              setListToDelete(null)
+            }}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteList} disabled={isDeletingList}>
+              {isDeletingList ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xóa...
+                </>
+              ) : (
+                "Xóa"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Board Dialog */}
       <Dialog open={isDeleteBoardDialogOpen} onOpenChange={setIsDeleteBoardDialogOpen}>
