@@ -66,14 +66,7 @@ export function ListColumn({
   onListDrop,
 }: ListColumnProps) {
   
-  // Debug logging for list drag and drop props
-  console.log(`🔍 ListColumn props for "${list.name}":`, {
-    isDraggingList,
-    draggedList: draggedList?.name,
-    onListDragStart: !!onListDragStart,
-    onListDragEnd: !!onListDragEnd,
-    onListDrop: !!onListDrop
-  })
+
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(list.name || "Untitled List")
 
@@ -179,47 +172,28 @@ export function ListColumn({
     e.dataTransfer.effectAllowed = "move"
     e.dataTransfer.setData("text/plain", list.id)
     
-    console.log(`🎯 List drag start: ${list.name}`)
     onListDragStart(list)
   }
 
   const handleListDragEnd = (e: React.DragEvent) => {
-    console.log(`🎯 List drag end triggered for:`, list.name)
-    console.log(`🔍 onListDragEnd exists:`, !!onListDragEnd)
-    
     if (!onListDragEnd) {
-      console.log(`❌ onListDragEnd is undefined`)
       return
     }
     
-    console.log(`🎯 List drag end:`, list.name)
     onListDragEnd()
   }
 
   const handleListDragOver = (e: React.DragEvent) => {
-    console.log(`🎯 List drag over triggered for:`, list.name)
-    console.log(`🔍 onListDrop exists:`, !!onListDrop)
-    console.log(`🔍 draggedList exists:`, !!draggedList)
-    console.log(`🔍 is same list:`, draggedList?.id === list.id)
-    
     if (!onListDrop || !draggedList || draggedList.id === list.id) {
-      console.log(`❌ Cannot handle drag over`)
       return
     }
     
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
-    console.log(`✅ List drag over handled for:`, list.name)
   }
 
   const handleListDrop = (e: React.DragEvent) => {
-    console.log(`🎯 List drop triggered for:`, list.name)
-    console.log(`🔍 onListDrop exists:`, !!onListDrop)
-    console.log(`🔍 draggedList exists:`, !!draggedList)
-    console.log(`🔍 is same list:`, draggedList?.id === list.id)
-    
     if (!onListDrop || !draggedList || draggedList.id === list.id) {
-      console.log(`❌ Cannot handle drop`)
       return
     }
     
@@ -232,8 +206,6 @@ export function ListColumn({
     // Determine if drop is before or after this list
     const position = x < centerX ? 'before' : 'after'
     
-    console.log(`🎯 List drop: ${draggedList.name} ${position} ${list.name}`)
-    console.log(`📍 Drop coordinates: x=${x}, centerX=${centerX}, position=${position}`)
     onListDrop(list, position)
   }
 
@@ -311,7 +283,6 @@ export function ListColumn({
             }}
             onDrop={(e) => {
               e.preventDefault()
-              console.log(`🎯 List drop on TOP of ${list.name} (BEFORE)`)
               onListDrop?.(list, 'before')
             }}
           ></div>
@@ -367,7 +338,6 @@ export function ListColumn({
             }}
             onDrop={(e) => {
               e.preventDefault()
-              console.log(`🎯 List drop on BOTTOM of ${list.name} (AFTER)`)
               onListDrop?.(list, 'after')
             }}
           ></div>

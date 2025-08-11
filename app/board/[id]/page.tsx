@@ -151,7 +151,7 @@ export default function BoardPage() {
       setUsers([])
     } catch (error: any) {
       setError("Không thể tải dữ liệu board")
-      console.error("Load board error:", error)
+      // Load board error
     } finally {
       setIsLoading(false)
     }
@@ -177,14 +177,11 @@ export default function BoardPage() {
 
   // WebSocket event handlers
   const handleCardCreated = useCallback((card: Card) => {
-    console.log(`📥 Received card_created WebSocket event:`, card)
-    
     setCards((prev) => {
       // Check if card already exists to prevent duplicates
       const existingCard = prev.find((c) => c.id === card.id)
       
       if (existingCard) {
-        console.log(`⚠️ Card already exists in state, skipping:`, card.id)
         return prev
       }
       
@@ -194,7 +191,6 @@ export default function BoardPage() {
         list_id: card.list_id || card.list?.id
       }
       
-      console.log(`✅ Adding card from WebSocket:`, normalizedCard)
       return [...prev, normalizedCard]
     })
   }, [])
@@ -276,63 +272,35 @@ export default function BoardPage() {
   }, [])
 
   const handleListUpdated = useCallback((list: List) => {
-    console.log(`📥 Received list_updated WebSocket event:`, list)
-    console.log(`🔍 List data structure:`, {
-      id: list.id,
-      name: list.name,
-      position: list.position,
-      board_id: list.board_id
-    })
-    
     setLists((prev) => {
-      console.log(`📋 Current lists in state:`, prev.map(l => ({ id: l.id, name: l.name })))
-      
       const existingList = prev.find((l) => l.id === list.id)
       if (!existingList) {
-        console.log(`⚠️ List not found in state, adding new list:`, list.id)
         return [...prev, list]
       }
       
-      console.log(`🔄 Updating existing list:`, {
-        old: { id: existingList.id, name: existingList.name, position: existingList.position },
-        new: { id: list.id, name: list.name, position: list.position }
-      })
-      
-      const updatedLists = prev.map((l) => (l.id === list.id ? list : l))
-      console.log(`✅ Updated lists state:`, updatedLists.map(l => ({ id: l.id, name: l.name })))
-      return updatedLists
+      return prev.map((l) => (l.id === list.id ? list : l))
     })
   }, [])
 
   const handleListDeleted = useCallback((data: any) => {
     // Handle both data formats: string or {id: string}
     const listId = typeof data === 'string' ? data : data.id
-    console.log(`📥 Received list_deleted WebSocket event for listId:`, listId)
     
     setLists((prev) => {
       const existingList = prev.find((l) => l.id === listId)
       if (!existingList) {
-        console.log(`⚠️ List not found in state, nothing to delete:`, listId)
         return prev
       }
       
-      console.log(`🗑️ Removing list from state:`, listId)
       return prev.filter((l) => l.id !== listId)
     })
     
     setCards((prev) => {
-      const cardsToRemove = prev.filter((c) => {
+      return prev.filter((c) => {
         // Handle both card.list.id and card.list_id formats
         const cardListId = c.list?.id || c.list_id
-        return cardListId === listId
+        return cardListId !== listId
       })
-      
-      if (cardsToRemove.length > 0) {
-        console.log(`🗑️ Removing ${cardsToRemove.length} cards from deleted list:`, listId)
-        return prev.filter((c) => c.list?.id || c.list_id !== listId)
-      }
-      
-      return prev
     })
   }, [])
 
@@ -363,7 +331,7 @@ export default function BoardPage() {
 
   // Load data - useEffect placed after all handlers to avoid dependency issues
   useEffect(() => {
-    console.log(`🔁 useEffect triggered for boardId: ${boardId}`)
+
     if (boardId) {
       loadBoardData()
       
@@ -377,7 +345,7 @@ export default function BoardPage() {
         
         // Only disconnect if WebSocket is actually connected
         if (wsClient.isConnected()) {
-          console.log(`🔍 [WEBSOCKET DEBUG] Component unmounting, disconnecting WebSocket`)
+
           // Cleanup WebSocket listeners
           wsClient.off("card_created", handleCardCreated)
           wsClient.off("card_updated", handleCardUpdated)
@@ -389,7 +357,7 @@ export default function BoardPage() {
           wsClient.off("list_moved", handleListMoved)
           wsClient.disconnect()
         } else {
-          console.log(`🔍 [WEBSOCKET DEBUG] Component unmounting, WebSocket not connected, skipping disconnect`)
+
         }
       }
     }
@@ -397,14 +365,14 @@ export default function BoardPage() {
 
   // Card operations
   const handleAddCard = (listId: string) => {
-    console.log("➕ Opening add card form for list:", listId)
+
     setDefaultListId(listId)
     setEditingCard(null)
     setIsCardFormOpen(true)
   }
 
   const handleEditCard = (card: Card) => {
-    console.log("✏️ Opening edit card form for card:", card.id)
+
     setEditingCard(card)
     setDefaultListId("")
     setIsCardFormOpen(true)
@@ -433,11 +401,8 @@ export default function BoardPage() {
           ...data,
           board_id: boardId, // Add board_id to create request
         })
-        console.log("✅ Card created successfully:", response)
-        
         // Extract card data from response
         const newCard = (response as any).data || response
-        console.log("📝 Extracted card data:", newCard)
         
         // DON'T add to state here - let WebSocket event handle it to avoid duplicates
         // The card will be added via handleCardCreated when WebSocket event is received
@@ -455,10 +420,8 @@ export default function BoardPage() {
   }
 
   const handleDeleteCard = async (cardId: string) => {
-    console.log("🗑️ Deleting card:", cardId)
     try {
       await apiClient.cards.deleteCards([cardId])
-      console.log("✅ Card deleted from API")
       
       // Don't update state here - let WebSocket handle it
       // This prevents conflicts when both API response and WebSocket update state
@@ -469,7 +432,7 @@ export default function BoardPage() {
         description: "Card đang được xóa...",
       })
     } catch (error: any) {
-      console.error("❌ Delete card error:", error)
+      // Delete card error
       toast({
         title: "Lỗi",
         description: "Không thể xóa card",
@@ -518,17 +481,11 @@ export default function BoardPage() {
 
   const handleEditList = async (list: List) => {
     try {
-      console.log(`🔄 Updating list via API:`, { id: list.id, name: list.name, position: list.position })
-      console.log(`🔍 WebSocket connection status:`, wsClient.isConnected())
-      
       const response = await apiClient.lists.updateList({
         id: list.id,
         name: list.name,
         position: list.position,
       })
-      
-      console.log(`✅ API response received:`, response)
-      console.log(`⏳ Waiting for WebSocket list_updated event...`)
       
       // Don't update state here - let WebSocket handle it
       // This prevents conflicts when both API response and WebSocket update state
@@ -539,7 +496,7 @@ export default function BoardPage() {
         description: "List đang được cập nhật...",
       })
     } catch (error: any) {
-      console.error(`❌ Error updating list:`, error)
+      // Error updating list
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật list",
@@ -590,13 +547,11 @@ export default function BoardPage() {
 
   // List drag and drop handlers
   const handleListDragStart = (list: List) => {
-    console.log(`🎯 List drag start:`, list.name)
     setIsDraggingList(true)
     setDraggedList(list)
   }
 
   const handleListDragEnd = () => {
-    console.log(`🎯 List drag end`)
     setIsDraggingList(false)
     setDraggedList(null)
   }
@@ -612,9 +567,6 @@ export default function BoardPage() {
         return posA.localeCompare(posB)
       })
 
-      console.log(`🔍 Current list order:`, sortedLists.map(l => `${l.name}(${l.position})`))
-      console.log(`🎯 Moving "${draggedList.name}" ${position} "${targetList.name}"`)
-
       // Find target list index in sorted array
       const targetIndex = sortedLists.findIndex(l => l.id === targetList.id)
       
@@ -629,11 +581,9 @@ export default function BoardPage() {
           // Not the first list - use after_id of previous list
           const previousList = sortedLists[targetIndex - 1]
           moveData.after_id = previousList.id
-          console.log(`📍 Placing after "${previousList.name}" (before "${targetList.name}")`)
         } else {
           // Target is first list - use before_id of target
           moveData.before_id = targetList.id
-          console.log(`📍 Placing before first list "${targetList.name}"`)
         }
       } else {
         // Want to place AFTER target list
@@ -641,24 +591,20 @@ export default function BoardPage() {
           // Not the last list - use before_id of next list
           const nextList = sortedLists[targetIndex + 1]
           moveData.before_id = nextList.id
-          console.log(`📍 Placing before "${nextList.name}" (after "${targetList.name}")`)
         } else {
           // Target is last list - use after_id of target
           moveData.after_id = targetList.id
-          console.log(`📍 Placing after last list "${targetList.name}"`)
         }
       }
 
-      console.log(`📤 Final moveData:`, moveData)
       const response = await apiClient.lists.moveList(moveData)
-      console.log(`✅ API response:`, response)
       
       toast({
         title: "Di chuyển thành công",
         description: `List "${draggedList.name}" đã được di chuyển`,
       })
     } catch (error: any) {
-      console.error(`❌ List move failed:`, error)
+      // List move failed
       toast({
         title: "Lỗi",
         description: "Không thể di chuyển list",
@@ -733,7 +679,7 @@ export default function BoardPage() {
       }
 
     } catch (error: any) {
-      console.error(`❌ Enhanced move failed:`, error)
+      // Enhanced move failed
       
       // Rollback failed move
       const rolledBackCard = rollbackFailedMove(enhancedDraggedCard.id)
@@ -801,7 +747,7 @@ export default function BoardPage() {
       // The card will be updated via handleCardMoved when WebSocket event is received
 
     } catch (error: any) {
-      console.error(`❌ Failed to move card:`, error)
+      // Failed to move card
       
       toast({
         title: "Lỗi",
