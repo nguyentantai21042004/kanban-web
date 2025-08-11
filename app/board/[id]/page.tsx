@@ -604,29 +604,49 @@ export default function BoardPage() {
   const handleListDrop = async (targetList: List, position: 'before' | 'after') => {
     if (!draggedList || draggedList.id === targetList.id) return
 
-    console.log(`🎯 List drop triggered:`, {
-      draggedList: draggedList.name,
-      targetList: targetList.name,
-      position: position,
-      draggedListId: draggedList.id,
-      targetListId: targetList.id
-    })
-
     try {
-      // Smart position logic: determine the best before_id or after_id
+      // Get current sorted lists to determine correct position
+      const sortedLists = lists.sort((a, b) => {
+        const posA = String(a.position || "0")
+        const posB = String(b.position || "0")
+        return posA.localeCompare(posB)
+      })
+
+      console.log(`🔍 Current list order:`, sortedLists.map(l => `${l.name}(${l.position})`))
+      console.log(`🎯 Moving "${draggedList.name}" ${position} "${targetList.name}"`)
+
+      // Find target list index in sorted array
+      const targetIndex = sortedLists.findIndex(l => l.id === targetList.id)
+      
       let moveData: any = {
         id: draggedList.id,
         board_id: boardId
       }
 
       if (position === 'before') {
-        // Dropping before target list
-        moveData.before_id = targetList.id
-        console.log(`📍 Using before_id: ${targetList.id}`)
+        // Want to place BEFORE target list
+        if (targetIndex > 0) {
+          // Not the first list - use after_id of previous list
+          const previousList = sortedLists[targetIndex - 1]
+          moveData.after_id = previousList.id
+          console.log(`📍 Placing after "${previousList.name}" (before "${targetList.name}")`)
+        } else {
+          // Target is first list - use before_id of target
+          moveData.before_id = targetList.id
+          console.log(`📍 Placing before first list "${targetList.name}"`)
+        }
       } else {
-        // Dropping after target list
-        moveData.after_id = targetList.id
-        console.log(`📍 Using after_id: ${targetList.id}`)
+        // Want to place AFTER target list
+        if (targetIndex < sortedLists.length - 1) {
+          // Not the last list - use before_id of next list
+          const nextList = sortedLists[targetIndex + 1]
+          moveData.before_id = nextList.id
+          console.log(`📍 Placing before "${nextList.name}" (after "${targetList.name}")`)
+        } else {
+          // Target is last list - use after_id of target
+          moveData.after_id = targetList.id
+          console.log(`📍 Placing after last list "${targetList.name}"`)
+        }
       }
 
       console.log(`📤 Final moveData:`, moveData)
