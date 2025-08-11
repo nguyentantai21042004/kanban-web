@@ -30,6 +30,12 @@ interface ListColumnProps {
   onCardClick: (card: CardType) => void
   isDraggingOver: (listId: string) => boolean
   getDropPosition: (listId: string) => number | null
+  // List drag and drop props
+  isDraggingList?: boolean
+  draggedList?: List | null
+  onListDragStart?: (list: List) => void
+  onListDragEnd?: () => void
+  onListDrop?: (targetList: List, position: 'before' | 'after') => void
 }
 
 export function ListColumn({
@@ -52,7 +58,22 @@ export function ListColumn({
   onCardClick,
   isDraggingOver,
   getDropPosition,
+  // List drag and drop props
+  isDraggingList = false,
+  draggedList = null,
+  onListDragStart,
+  onListDragEnd,
+  onListDrop,
 }: ListColumnProps) {
+  
+  // Debug logging for list drag and drop props
+  console.log(`🔍 ListColumn props for "${list.name}":`, {
+    isDraggingList,
+    draggedList: draggedList?.name,
+    onListDragStart: !!onListDragStart,
+    onListDragEnd: !!onListDragEnd,
+    onListDrop: !!onListDrop
+  })
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(list.name || "Untitled List")
 
@@ -67,6 +88,13 @@ export function ListColumn({
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
     
+    // Handle list drag over
+    if (isDraggingList && draggedList && draggedList.id !== list.id) {
+      console.log(`🎯 List drag over on entire ${list.name} area`)
+      return
+    }
+    
+    // Handle card drag over
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
     const headerHeight = 80 // Card header height
@@ -94,6 +122,16 @@ export function ListColumn({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
+    
+    // Handle list drop
+    if (isDraggingList && draggedList && draggedList.id !== list.id) {
+      console.log(`🎯 List drop on entire ${list.name} area`)
+      // Default to 'after' when dropping on the main area
+      onListDrop?.(list, 'after')
+      return
+    }
+    
+    // Handle card drop
     const rect = e.currentTarget.getBoundingClientRect()
     const y = e.clientY - rect.top
     const headerHeight = 80 // Card header height (consistent with dragOver)
@@ -132,11 +170,80 @@ export function ListColumn({
     }
   }
 
+  // List drag and drop handlers
+  const handleListDragStart = (e: React.DragEvent) => {
+    if (!onListDragStart) {
+      return
+    }
+    
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", list.id)
+    
+    console.log(`🎯 List drag start: ${list.name}`)
+    onListDragStart(list)
+  }
+
+  const handleListDragEnd = (e: React.DragEvent) => {
+    console.log(`🎯 List drag end triggered for:`, list.name)
+    console.log(`🔍 onListDragEnd exists:`, !!onListDragEnd)
+    
+    if (!onListDragEnd) {
+      console.log(`❌ onListDragEnd is undefined`)
+      return
+    }
+    
+    console.log(`🎯 List drag end:`, list.name)
+    onListDragEnd()
+  }
+
+  const handleListDragOver = (e: React.DragEvent) => {
+    console.log(`🎯 List drag over triggered for:`, list.name)
+    console.log(`🔍 onListDrop exists:`, !!onListDrop)
+    console.log(`🔍 draggedList exists:`, !!draggedList)
+    console.log(`🔍 is same list:`, draggedList?.id === list.id)
+    
+    if (!onListDrop || !draggedList || draggedList.id === list.id) {
+      console.log(`❌ Cannot handle drag over`)
+      return
+    }
+    
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    console.log(`✅ List drag over handled for:`, list.name)
+  }
+
+  const handleListDrop = (e: React.DragEvent) => {
+    console.log(`🎯 List drop triggered for:`, list.name)
+    console.log(`🔍 onListDrop exists:`, !!onListDrop)
+    console.log(`🔍 draggedList exists:`, !!draggedList)
+    console.log(`🔍 is same list:`, draggedList?.id === list.id)
+    
+    if (!onListDrop || !draggedList || draggedList.id === list.id) {
+      console.log(`❌ Cannot handle drop`)
+      return
+    }
+    
+    e.preventDefault()
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const centerX = rect.width / 2
+    
+    // Determine if drop is before or after this list
+    const position = x < centerX ? 'before' : 'after'
+    
+    console.log(`🎯 List drop: ${draggedList.name} ${position} ${list.name}`)
+    console.log(`📍 Drop coordinates: x=${x}, centerX=${centerX}, position=${position}`)
+    onListDrop(list, position)
+  }
+
   return (
     <Card
       className={`w-80 flex-shrink-0 transition-all duration-200 ${
         isDraggedOverThis 
           ? "ring-2 ring-blue-400 bg-blue-50 shadow-lg" 
+          : isDraggingList && draggedList?.id !== list.id
+          ? "ring-2 ring-orange-400 bg-orange-50 shadow-lg"
           : "hover:shadow-md"
       }`}
       onDragOver={handleDragOver}
@@ -157,12 +264,20 @@ export function ListColumn({
               />
             </form>
           ) : (
-            <CardTitle
-              className="text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+            <div
+              className={`text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors font-semibold select-none ${
+                isDraggingList && draggedList?.id === list.id ? 'opacity-50' : ''
+              }`}
               onClick={() => setIsEditingTitle(true)}
+              draggable={!!onListDragStart}
+              onDragStart={handleListDragStart}
+              onDragEnd={handleListDragEnd}
+              onDragOver={handleListDragOver}
+              onDrop={handleListDrop}
+              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
             >
               {displayTitle} ({cards.length})
-            </CardTitle>
+            </div>
           )}
 
           <DropdownMenu>
@@ -186,7 +301,23 @@ export function ListColumn({
       </CardHeader>
 
       <CardContent className="pt-0 pb-4">
-        {/* Enhanced top drop zone indicator */}
+        {/* List drop zone indicator - TOP */}
+        {isDraggingList && draggedList && draggedList.id !== list.id && (
+          <div 
+            className="h-3 bg-orange-500 rounded mb-3 mx-2 transition-all duration-200 cursor-pointer"
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = "move"
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              console.log(`🎯 List drop on TOP of ${list.name} (BEFORE)`)
+              onListDrop?.(list, 'before')
+            }}
+          ></div>
+        )}
+
+        {/* Enhanced top drop zone indicator for cards */}
         {isDraggedOverThis && dropPosition === 0 && (
           <div className="h-3 bg-blue-500 rounded mb-3 mx-2 transition-all duration-200"></div>
         )}
@@ -221,9 +352,25 @@ export function ListColumn({
           ))}
         </div>
 
-        {/* Enhanced bottom drop zone indicator */}
+        {/* Enhanced bottom drop zone indicator for cards */}
         {isDraggedOverThis && dropPosition === cards.length && (
           <div className="h-3 bg-blue-500 rounded mt-3 mx-2 transition-all duration-200"></div>
+        )}
+
+        {/* List drop zone indicator - BOTTOM */}
+        {isDraggingList && draggedList && draggedList.id !== list.id && (
+          <div 
+            className="h-3 bg-orange-500 rounded mt-3 mx-2 transition-all duration-200 cursor-pointer"
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = "move"
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              console.log(`🎯 List drop on BOTTOM of ${list.name} (AFTER)`)
+              onListDrop?.(list, 'after')
+            }}
+          ></div>
         )}
 
         <Button

@@ -33,4 +33,11 @@ export interface GetListResponse {
       total_pages: number
     }
   }
-} 
+}
+
+export interface MoveListRequest {
+  id: string // ID of the list to move
+  board_id: string // Board ID where the list belongs
+  after_id?: string // ID of the list to place after (optional)
+  before_id?: string // ID of the list to place before (optional)
+}

@@ -3,7 +3,8 @@ import type {
   List, 
   CreateListRequest, 
   UpdateListRequest, 
-  GetListResponse 
+  GetListResponse,
+  MoveListRequest
 } from '../types/list.types'
 import type { ApiResponse } from '../types/auth.types'
 
@@ -78,6 +79,20 @@ export class ListClient extends BaseClient {
       })
     } catch (error) {
       this.logError('deleteLists', error)
+      throw error
+    }
+  }
+
+  async moveList(data: MoveListRequest): Promise<ApiResponse<null>> {
+    this.logMethodCall('moveList', data)
+    
+    try {
+      return await this.request<ApiResponse<null>>("/lists/move", {
+        method: "POST",
+        body: JSON.stringify(data),
+      })
+    } catch (error) {
+      this.logError('moveList', error)
       throw error
     }
   }

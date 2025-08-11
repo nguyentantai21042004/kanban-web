@@ -66,6 +66,10 @@ export default function BoardPage() {
   const [listToDelete, setListToDelete] = useState<List | null>(null)
   const [isDeletingList, setIsDeletingList] = useState(false)
 
+  // List drag and drop
+  const [isDraggingList, setIsDraggingList] = useState(false)
+  const [draggedList, setDraggedList] = useState<List | null>(null)
+
 
 
   // Enhanced drag and drop with advanced position management
@@ -115,12 +119,8 @@ export default function BoardPage() {
 
 
   const loadBoardData = useCallback(async () => {
-    console.log(`🔄 loadBoardData called for boardId: ${boardId}`)
-    
-    // Enable debug logging for enhanced position calculation
     if (typeof window !== 'undefined') {
       positionConfigManager.updateConfig({ enableDebugLogging: true })
-      console.log('🎯 Enhanced position system activated with debug logging')
     }
     
     try {
@@ -138,8 +138,6 @@ export default function BoardPage() {
       setLists(listsData.data?.items || []) // No need to filter, already filtered by API
       
       const cards = cardsData.data?.items || []
-      console.log("🔍 Raw cards from API:", cards)
-      console.log("🔍 First card structure:", cards[0])
       
       // Normalize cards to ensure they have list_id for consistent access
       const normalizedCards = cards.map(card => ({
@@ -160,12 +158,8 @@ export default function BoardPage() {
   }, [boardId])
 
   const connectWebSocket = useCallback(async () => {
-    console.log(`🌐 connectWebSocket called for boardId: ${boardId}`)
     try {
       await wsClient.connect(boardId)
-      console.log(`✅ WebSocket connected successfully`)
-      
-      console.log(`🔍 Registering WebSocket event listeners...`)
       
       // Listen for real-time updates
       wsClient.on("card_created", handleCardCreated)
@@ -175,15 +169,11 @@ export default function BoardPage() {
       wsClient.on("list_created", handleListCreated)
       wsClient.on("list_updated", handleListUpdated)
       wsClient.on("list_deleted", handleListDeleted)
-      
-      console.log(`✅ All WebSocket event listeners registered`)
-      console.log(`📡 Listening for events: card_created, card_updated, card_moved, card_deleted, list_created, list_updated, list_deleted`)
+      wsClient.on("list_moved", handleListMoved)
     } catch (error) {
-      console.log("ℹ️ WebSocket connection skipped (optional for development)")
-      // Don't show error to user, just log it
       // WebSocket is optional for the app to work
     }
-  }, [boardId]) // Only depend on boardId to avoid circular dependencies
+  }, [boardId])
 
   // WebSocket event handlers
   const handleCardCreated = useCallback((card: Card) => {
@@ -210,12 +200,9 @@ export default function BoardPage() {
   }, [])
 
   const handleCardUpdated = useCallback((card: Card) => {
-    console.log(`📥 Received card_updated WebSocket event:`, card)
-    
     setCards((prev) => {
       const existingCard = prev.find((c) => c.id === card.id)
       if (!existingCard) {
-        console.log(`⚠️ Card not found in state, adding new card:`, card.id)
         // Normalize card before adding
         const normalizedCard = {
           ...card,
@@ -224,23 +211,16 @@ export default function BoardPage() {
         return [...prev, normalizedCard]
       }
       
-      console.log(`🔄 Updating existing card:`, card.id)
       return prev.map((c) => (c.id === card.id ? card : c))
     })
   }, [])
 
   const handleCardMoved = useCallback((card: Card) => {
-    console.log(`📥 Received card_moved event:`, card)
-    console.log(`📋 Card details - ID: ${card.id}, Name: ${card.name}, New List: ${card.list_id || card.list?.id}`)
-    
-    // WebSocket event received - no timeout clearing needed since we removed fallback timeout
-    
     setCards((prev) => {
       // Find existing card
       const existingCard = prev.find((c) => c.id === card.id)
       
       if (!existingCard) {
-        console.log(`⚠️ Card not found in state, adding new card:`, card.id)
         // Normalize card before adding
         const normalizedCard: Card = {
           ...card,
@@ -251,9 +231,6 @@ export default function BoardPage() {
       }
       
       // Update existing card with new data, preserving any missing fields
-      console.log(`🔄 Updating existing card:`, card.id)
-      console.log(`📍 Moving from list ${existingCard.list_id || existingCard.list?.id} to list ${card.list_id || card.list?.id}`)
-      
       const updatedCard: Card = {
         ...existingCard,
         ...card,
@@ -262,10 +239,6 @@ export default function BoardPage() {
         list_id: card.list_id || card.list?.id || existingCard.list_id
       }
       
-      console.log(`✅ Card updated successfully:`, updatedCard)
-      console.log(`🔍 Updated card list_id:`, updatedCard.list_id)
-      console.log(`🔍 Updated card list:`, updatedCard.list)
-      
       return prev.map((c) => (c.id === card.id ? updatedCard : c))
     })
   }, [])
@@ -273,28 +246,22 @@ export default function BoardPage() {
   const handleCardDeleted = useCallback((data: any) => {
     // Handle both data formats: string or {id: string}
     const cardId = typeof data === 'string' ? data : data.id
-    console.log(`📥 Received card_deleted WebSocket event for cardId:`, cardId)
     
     setCards((prev) => {
       const existingCard = prev.find((c) => c.id === cardId)
       if (!existingCard) {
-        console.log(`⚠️ Card not found in state, nothing to delete:`, cardId)
         return prev
       }
       
-      console.log(`🗑️ Removing card from state:`, cardId)
       return prev.filter((c) => c.id !== cardId)
     })
   }, [])
 
   const handleListCreated = useCallback((list: List) => {
-    console.log(`📥 Received list_created WebSocket event:`, list)
-    
     setLists((prev) => {
       // Check if list already exists to prevent duplicates
       const exists = prev.some((l) => l.id === list.id)
       if (exists) {
-        console.log(`⚠️ List already exists in state, skipping:`, list.id)
         return prev
       }
       
@@ -304,7 +271,6 @@ export default function BoardPage() {
         name: list.name === "string" ? "Untitled List" : list.name
       }
       
-      console.log(`✅ Adding list from WebSocket:`, fixedList)
       return [...prev, fixedList]
     })
   }, [])
@@ -363,15 +329,37 @@ export default function BoardPage() {
       
       if (cardsToRemove.length > 0) {
         console.log(`🗑️ Removing ${cardsToRemove.length} cards from deleted list:`, listId)
-        return prev.filter((c) => {
-          const cardListId = c.list?.id || c.list_id
-          return cardListId !== listId
-        })
+        return prev.filter((c) => c.list?.id || c.list_id !== listId)
       }
       
       return prev
     })
   }, [])
+
+  const handleListMoved = useCallback((data: any) => {
+    if (data.board_id === boardId) {
+      setLists(prevLists => {
+        const updatedLists = prevLists.map(list => {
+          if (list.id === data.id) {
+            return {
+              ...list,
+              position: data.position
+            }
+          }
+          return list
+        })
+        
+        // Sort lists by position (a > ab > b logic)
+        const sortedLists = updatedLists.sort((a, b) => {
+          if (a.position === b.position) return 0
+          if (a.position < b.position) return -1
+          return 1
+        })
+        
+        return sortedLists
+      })
+    }
+  }, [boardId])
 
   // Load data - useEffect placed after all handlers to avoid dependency issues
   useEffect(() => {
@@ -398,6 +386,7 @@ export default function BoardPage() {
           wsClient.off("list_created", handleListCreated)
           wsClient.off("list_updated", handleListUpdated)
           wsClient.off("list_deleted", handleListDeleted)
+          wsClient.off("list_moved", handleListMoved)
           wsClient.disconnect()
         } else {
           console.log(`🔍 [WEBSOCKET DEBUG] Component unmounting, WebSocket not connected, skipping disconnect`)
@@ -599,6 +588,65 @@ export default function BoardPage() {
     }
   }
 
+  // List drag and drop handlers
+  const handleListDragStart = (list: List) => {
+    console.log(`🎯 List drag start:`, list.name)
+    setIsDraggingList(true)
+    setDraggedList(list)
+  }
+
+  const handleListDragEnd = () => {
+    console.log(`🎯 List drag end`)
+    setIsDraggingList(false)
+    setDraggedList(null)
+  }
+
+  const handleListDrop = async (targetList: List, position: 'before' | 'after') => {
+    if (!draggedList || draggedList.id === targetList.id) return
+
+    console.log(`🎯 List drop triggered:`, {
+      draggedList: draggedList.name,
+      targetList: targetList.name,
+      position: position,
+      draggedListId: draggedList.id,
+      targetListId: targetList.id
+    })
+
+    try {
+      // Smart position logic: determine the best before_id or after_id
+      let moveData: any = {
+        id: draggedList.id,
+        board_id: boardId
+      }
+
+      if (position === 'before') {
+        // Dropping before target list
+        moveData.before_id = targetList.id
+        console.log(`📍 Using before_id: ${targetList.id}`)
+      } else {
+        // Dropping after target list
+        moveData.after_id = targetList.id
+        console.log(`📍 Using after_id: ${targetList.id}`)
+      }
+
+      console.log(`📤 Final moveData:`, moveData)
+      const response = await apiClient.lists.moveList(moveData)
+      console.log(`✅ API response:`, response)
+      
+      toast({
+        title: "Di chuyển thành công",
+        description: `List "${draggedList.name}" đã được di chuyển`,
+      })
+    } catch (error: any) {
+      console.error(`❌ List move failed:`, error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể di chuyển list",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Board operations
   const handleDeleteBoard = async () => {
     try {
@@ -628,56 +676,18 @@ export default function BoardPage() {
   const handleDropEnhanced = async (listId: string, dropIndex: number) => {
     if (!enhancedDraggedCard) return
 
-    console.log(`🎯 Enhanced drop handler:`, {
-      cardId: enhancedDraggedCard.id,
-      targetListId: listId,
-      dropIndex,
-      totalCards: cards.length
-    })
-
     try {
       // Calculate optimal position using enhanced algorithm
-      console.log(`🎯 Calling calculateDropPosition with:`, {
-        listId,
-        dropIndex,
-        cardsCount: cards.length,
-        draggedCardId: enhancedDraggedCard.id
-      })
-      
       const positionResult = calculateDropPosition(listId, dropIndex, cards)
-      console.log(`📍 Position result:`, positionResult)
       
       if (!positionResult) {
-        console.error(`❌ Position calculation failed for:`, {
-          listId,
-          dropIndex,
-          draggedCardId: enhancedDraggedCard.id,
-          cards: cards.map(c => ({ 
-            id: c.id, 
-            name: c.name, 
-            listId: c.list?.id || c.list_id, 
-            position: c.position 
-          }))
-        })
         throw new Error("Failed to calculate drop position")
       }
-
-      console.log(`📍 Calculated position:`, {
-        position: positionResult.position,
-        confidence: positionResult.confidence,
-        needsValidation: positionResult.needsServerValidation
-      })
 
       // API call function - convert fractional position to number for API compatibility
       const apiCall = async (optimisticCard: Card) => {
         // Convert fractional position to decimal number for API
         const numericPosition = PositionManager.positionToNumber(positionResult.position)
-        
-        console.log(`🔢 Position conversion:`, {
-          fractionalPosition: positionResult.position,
-          numericPosition,
-          confidence: positionResult.confidence
-        })
         
         const response = await apiClient.cards.moveCard({
           id: optimisticCard.id,
@@ -696,15 +706,6 @@ export default function BoardPage() {
       )
 
       if (result) {
-        console.log(`✅ Enhanced move completed:`, {
-          cardId: result.id,
-          fractionalPosition: positionResult.position,
-          finalNumericPosition: result.position,
-          confidence: positionResult.confidence,
-          needsServerValidation: positionResult.needsServerValidation,
-          performance: getPerformanceMetrics()
-        })
-
         toast({
           title: "Di chuyển thành công",
           description: `"${result.name}" đã được di chuyển`,
@@ -734,11 +735,6 @@ export default function BoardPage() {
   const handleDrop = async (listId: string, position: number) => {
     if (!draggedCard) return
 
-    console.log(`🎯 handleDrop called - Card: ${draggedCard.name}`)
-    console.log(`🔍 Full draggedCard structure:`, draggedCard)
-    console.log(`📍 From: ${draggedCard.list_id || draggedCard.list?.id || 'UNDEFINED'}, To: ${listId}`)
-    console.log(`📍 Position: ${position}`)
-
     const currentListId = draggedCard.list_id || draggedCard.list?.id
     
     // Calculate the actual position considering other cards
@@ -749,64 +745,39 @@ export default function BoardPage() {
     // Sort cards by position to get correct ordering
     targetListCards.sort((a, b) => (a.position || 0) - (b.position || 0))
     
-    console.log(`📍 Target list cards:`, targetListCards.map(c => ({ 
-      id: c.id, 
-      name: c.name, 
-      position: c.position 
-    })))
-    console.log(`📍 Drop position: ${position} (out of ${targetListCards.length})`)
-    
     let finalPosition: number
     
     if (targetListCards.length === 0) {
       // Empty list - use position 1000
       finalPosition = 1000
-      console.log(`📍 Empty list -> position: ${finalPosition}`)
     } else if (position === 0) {
       // Drop at beginning - position before first card
       finalPosition = Math.max(0, (targetListCards[0]?.position || 1000) - 1000)
-      console.log(`📍 Drop at beginning -> position: ${finalPosition}`)
     } else if (position >= targetListCards.length) {
       // Drop at end - position after last card
       finalPosition = (targetListCards[targetListCards.length - 1]?.position || 0) + 1000
-      console.log(`📍 Drop at end -> position: ${finalPosition}`)
     } else {
       // Drop between cards - position between two cards
       const prevCard = targetListCards[position - 1]
       const nextCard = targetListCards[position]
       finalPosition = ((prevCard?.position || 0) + (nextCard?.position || 1000)) / 2
-      console.log(`📍 Drop between cards -> prev: ${prevCard?.position}, next: ${nextCard?.position}, final: ${finalPosition}`)
     }
 
     // Check if this is the same position and list (no actual change)
     if (currentListId === listId && Math.abs((draggedCard.position || 0) - finalPosition) < 1) {
-      console.log("📍 Same position - no movement needed")
       handleDragEnd()
       return
     }
 
     try {
       // Call API to update server with calculated position
-      console.log(`📡 Calling moveCard API:`, {
-        id: draggedCard.id,
-        list_id: listId,
-        position: finalPosition
-      })
-      
       const response = await apiClient.cards.moveCard({
         id: draggedCard.id,
         list_id: listId,
         position: finalPosition,
       })
-      console.log("✅ Card moved successfully via API:", response)
 
       // DON'T update state here - let WebSocket event handle it to avoid conflicts
-      // The card will be updated via handleCardMoved when WebSocket event is received
-      
-      // Note: Backend will broadcast the card_moved event automatically
-      console.log("⏳ Waiting for WebSocket card_moved event...")
-      
-      // DON'T use fallback timeout since WebSocket is working properly
       // The card will be updated via handleCardMoved when WebSocket event is received
 
     } catch (error: any) {
@@ -875,21 +846,20 @@ export default function BoardPage() {
       {/* Board content */}
       <div className="p-6">
         <div className="flex space-x-6 overflow-x-auto pb-6 board-container">
-          {lists.map((list) => {
-            const listCards = cards
+          {lists
+            .sort((a, b) => {
+              // Sort lists by position using base-36 logic (same as Go)
+              const posA = String(a.position || "0")
+              const posB = String(b.position || "0")
+              return posA.localeCompare(posB)
+            })
+                        .map((list) => {
+              const listCards = cards
               .filter((card) => {
-                // FIXED: Prioritize card.list_id over card.list?.id because list_id is always up-to-date
                 const cardListId = card.list_id || card.list?.id
-                const matches = cardListId === list.id
-                
-                // Debug logging removed - position logic now handles card movements properly
-                
-                return matches
+                return cardListId === list.id
               })
-              .sort((a, b) => (a.position || 0) - (b.position || 0)) // Sort by position
-            
-            console.log(`📋 List ${list.name} (${list.id}) has ${listCards.length} cards:`, 
-              listCards.map(c => ({ id: c.id, name: c.name, position: c.position })))
+              .sort((a, b) => (a.position || 0) - (b.position || 0))
             
             return (
               <ListColumn
@@ -913,6 +883,12 @@ export default function BoardPage() {
                 onCardClick={handleCardClick}
                 isDraggingOver={enhancedIsDraggingOver}
                 getDropPosition={(listId) => enhancedIsDraggingOver(listId) ? 0 : null}
+                // List drag and drop props
+                isDraggingList={isDraggingList}
+                draggedList={draggedList}
+                onListDragStart={handleListDragStart}
+                onListDragEnd={handleListDragEnd}
+                onListDrop={handleListDrop}
               />
             )
           })}
