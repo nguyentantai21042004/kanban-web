@@ -80,4 +80,34 @@ export class AuthClient extends BaseClient {
   isAuthenticated(): boolean {
     return AuthUtils.isTokenValid()
   }
+
+  async changePassword(data: { current_password: string; new_password: string }): Promise<ApiResponse<null>> {
+    this.logMethodCall('changePassword')
+    try {
+      return await this.request<ApiResponse<null>>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error) {
+      this.logError('changePassword', error)
+      throw error
+    }
+  }
+
+  async uploadAvatar(file: File): Promise<{ error_code: number; message: string; data: { url: string } }> {
+    this.logMethodCall('uploadAvatar', { filename: file?.name })
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      return await this.request<{ error_code: number; message: string; data: { url: string } }>('/auth/avatar', {
+        method: 'POST',
+        body: formData as any,
+        // Let browser set multipart headers
+      })
+    } catch (error) {
+      this.logError('uploadAvatar', error)
+      throw error
+    }
+  }
 } 
