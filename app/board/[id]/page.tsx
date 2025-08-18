@@ -200,14 +200,24 @@ export default function BoardPage() {
       const existingCard = prev.find((c) => c.id === card.id)
       if (!existingCard) {
         // Normalize card before adding
-        const normalizedCard = {
+        const normalizedCard: Card = {
           ...card,
-          list_id: card.list_id || card.list?.id
-        }
+          list_id: card.list_id || card.list?.id,
+          list: (card.list && card.list.id) ? card.list : (card.list_id ? { id: card.list_id, name: card.list?.name || 'Unknown List' } as any : undefined)
+        } as Card
         return [...prev, normalizedCard]
       }
-      
-      return prev.map((c) => (c.id === card.id ? card : c))
+
+      // Merge with existing to avoid losing critical fields when server sends empty values
+      const mergedCard: Card = {
+        ...existingCard,
+        ...card,
+        list_id: card.list_id || card.list?.id || existingCard.list_id || existingCard.list?.id,
+        list: (card.list && card.list.id) ? card.list : existingCard.list,
+        position: card.position && card.position !== "" ? card.position : existingCard.position,
+      }
+
+      return prev.map((c) => (c.id === card.id ? mergedCard : c))
     })
   }, [])
 
@@ -393,8 +403,8 @@ export default function BoardPage() {
         // The WebSocket event will be received and handleCardUpdated will update the card
         
         toast({
-          title: "Cập nhật thành công",
-          description: "Card đang được cập nhật...",
+          title: "Thành công",
+          description: "Card đã được cập nhật",
         })
       } else {
         // Create new card
@@ -410,7 +420,7 @@ export default function BoardPage() {
         // Note: Backend will broadcast the card_created event automatically
         
         toast({
-          title: "Tạo thành công",
+          title: "Thành công",
           description: "Card mới đã được tạo",
         })
       }
@@ -1020,3 +1030,4 @@ export default function BoardPage() {
     </div>
   )
 }
+

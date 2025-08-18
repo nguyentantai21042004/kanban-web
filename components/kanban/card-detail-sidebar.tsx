@@ -109,32 +109,38 @@ export function CardDetailSidebar({
     }
   }
 
+  const normalizeDate = (value?: string) => {
+    if (!value) return undefined
+    if (value.startsWith("0001-01-01")) return undefined
+    return value.length >= 10 ? value.slice(0, 10) : value
+  }
+
   const handleSave = async () => {
     if (!card) return
 
     setIsSubmitting(true)
     try {
       console.log("🔔 Manual save clicked for:", card.id)
-      const response = await apiClient.cards.updateCard({
+      const payload: any = {
         id: card.id,
-        // Send both title and name to be compatible with API variations
-        title: (card as any).title ?? (card as any).name,
         name: (card as any).name ?? (card as any).title,
-        description: card.description,
+        description: card.description || undefined,
         priority: (card as any).priority,
-        labels: card.labels,
-        due_date: card.due_date,
-        assigned_to: card.assigned_to,
+        labels: card.labels && card.labels.length ? card.labels : undefined,
+        due_date: normalizeDate(card.due_date),
+        start_date: normalizeDate(card.start_date),
+        completion_date: normalizeDate(card.completion_date),
+        assigned_to: card.assigned_to || undefined,
         estimated_hours: card.estimated_hours,
         actual_hours: card.actual_hours,
-        start_date: card.start_date,
-        completion_date: card.completion_date,
-        tags: card.tags,
-        checklist: card.checklist as any,
-      } as any)
+        tags: card.tags && card.tags.length ? card.tags : undefined,
+        checklist: card.checklist && card.checklist.length ? (card.checklist as any) : undefined,
+      }
 
-      const updatedCard = (response as any).data || response
-      onUpdate(updatedCard)
+      console.log("📤 Sending update payload:", payload)
+      const response = await apiClient.cards.updateCard(payload)
+      console.log("✅ Update response received:", response)
+      // Don't mutate local state here; rely on WebSocket card_updated to sync
       toast({
         title: "Thành công",
         description: "Card đã được cập nhật",
@@ -560,8 +566,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Ngày bắt đầu</LabelComponent>
                       <Input
                         type="date"
-                                        value={card.start_date || ""}
-                onChange={(e) => handleFieldChange("start_date", e.target.value || undefined)}
+                        value={card.start_date ? card.start_date.slice(0, 10) : ""}
+                        onChange={(e) => handleFieldChange("start_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
@@ -573,8 +579,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Hạn hoàn thành</LabelComponent>
                       <Input
                         type="date"
-                                        value={card.due_date || ""}
-                onChange={(e) => handleFieldChange("due_date", e.target.value || undefined)}
+                        value={card.due_date ? card.due_date.slice(0, 10) : ""}
+                        onChange={(e) => handleFieldChange("due_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
@@ -586,8 +592,8 @@ export function CardDetailSidebar({
                       <LabelComponent className="text-xs">Ngày hoàn thành</LabelComponent>
                       <Input
                         type="date"
-                                        value={card.completion_date || ""}
-                onChange={(e) => handleFieldChange("completion_date", e.target.value || undefined)}
+                        value={card.completion_date ? card.completion_date.slice(0, 10) : ""}
+                        onChange={(e) => handleFieldChange("completion_date", e.target.value || undefined)}
                         style={{
                           borderColor: '#e5e7eb',
                           outline: 'none',
