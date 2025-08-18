@@ -22,7 +22,7 @@ pipeline {
         K8S_DEPLOYMENT_NAME = 'kanban-web'
         K8S_CONTAINER_NAME = 'kanban-web'
         K8S_API_SERVER = 'https://172.16.21.31:6443'
-        K8S_TOKEN = credentials('k8s-token')
+        K8S_TOKEN = credentials('k8s-api')
         
         TEXT_START = "⚪ Service ${SERVICE} ${ENVIRONMENT} Build Started"
         TEXT_BUILD_AND_PUSH_APP_FAIL = "🔴 Service ${SERVICE} ${ENVIRONMENT} Build and Push Failed"
