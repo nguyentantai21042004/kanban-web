@@ -382,6 +382,7 @@ export default function BoardPage() {
     try {
       if (editingCard) {
         // Update existing card
+        console.log("📝 Submitting card update via form:", { id: editingCard.id, data })
         const response = await apiClient.cards.updateCard({
           id: editingCard.id,
           ...data,
@@ -401,8 +402,7 @@ export default function BoardPage() {
           ...data,
           board_id: boardId, // Add board_id to create request
         })
-        // Extract card data from response
-        const newCard = (response as any).data || response
+        // API now returns Card directly
         
         // DON'T add to state here - let WebSocket event handle it to avoid duplicates
         // The card will be added via handleCardCreated when WebSocket event is received
@@ -650,17 +650,36 @@ export default function BoardPage() {
         throw new Error("Failed to calculate drop position")
       }
 
-      // API call function - convert fractional position to number for API compatibility
+      // API call function - use before_id/after_id for new API format
       const apiCall = async (optimisticCard: Card) => {
-        // Convert fractional position to decimal number for API
-        const numericPosition = PositionManager.positionToNumber(positionResult.position)
+        // Calculate before_id and after_id based on dropIndex
+        const targetListCards = cards.filter(card => 
+          (card.list_id || card.list?.id) === listId && card.id !== optimisticCard.id
+        ).sort((a, b) => (a.position || "0").localeCompare(b.position || "0"))
         
-        const response = await apiClient.cards.moveCard({
+        let moveData: { id: string; list_id?: string; before_id?: string; after_id?: string } = {
           id: optimisticCard.id,
-          list_id: listId,
-          position: numericPosition
-        })
-        return (response as any).data || response
+          // Always include list_id to avoid backend ambiguity
+          list_id: listId
+        }
+        
+        // Calculate before_id/after_id based on dropIndex
+        if (targetListCards.length === 0) {
+          // Empty list - no need for before/after IDs
+        } else if (dropIndex === 0) {
+          // Drop at beginning - before first card
+          moveData.before_id = targetListCards[0]?.id
+        } else if (dropIndex >= targetListCards.length) {
+          // Drop at end - after last card
+          moveData.after_id = targetListCards[targetListCards.length - 1]?.id
+        } else {
+          // Drop between cards
+          moveData.after_id = targetListCards[dropIndex - 1]?.id
+          moveData.before_id = targetListCards[dropIndex]?.id
+        }
+        
+        const response = await apiClient.cards.moveCard(moveData)
+        return response // API now returns Card directly
       }
 
       // Execute with optimistic updates
@@ -703,45 +722,41 @@ export default function BoardPage() {
 
     const currentListId = draggedCard.list_id || draggedCard.list?.id
     
-    // Calculate the actual position considering other cards
-    const targetListCards = cards.filter(card => 
-      (card.list_id || card.list?.id) === listId && card.id !== draggedCard.id
-    )
-    
-    // Sort cards by position to get correct ordering
-    targetListCards.sort((a, b) => (a.position || 0) - (b.position || 0))
-    
-    let finalPosition: number
-    
-    if (targetListCards.length === 0) {
-      // Empty list - use position 1000
-      finalPosition = 1000
-    } else if (position === 0) {
-      // Drop at beginning - position before first card
-      finalPosition = Math.max(0, (targetListCards[0]?.position || 1000) - 1000)
-    } else if (position >= targetListCards.length) {
-      // Drop at end - position after last card
-      finalPosition = (targetListCards[targetListCards.length - 1]?.position || 0) + 1000
-    } else {
-      // Drop between cards - position between two cards
-      const prevCard = targetListCards[position - 1]
-      const nextCard = targetListCards[position]
-      finalPosition = ((prevCard?.position || 0) + (nextCard?.position || 1000)) / 2
-    }
+    // No need to calculate numeric position anymore - API uses before_id/after_id
 
-    // Check if this is the same position and list (no actual change)
-    if (currentListId === listId && Math.abs((draggedCard.position || 0) - finalPosition) < 1) {
-      handleDragEnd()
-      return
-    }
+    // Check if this is the same list (still allow position changes within same list)
+    // For string-based positions, we can't easily compare positions, so allow the API call
+    // The backend will handle duplicate position scenarios
 
     try {
-      // Call API to update server with calculated position
-      const response = await apiClient.cards.moveCard({
+      // Calculate before_id and after_id for new API format
+      const targetListCards = cards.filter(card => 
+        (card.list_id || card.list?.id) === listId && card.id !== draggedCard.id
+      ).sort((a, b) => (a.position || "0").localeCompare(b.position || "0"))
+      
+      let moveData: { id: string; list_id?: string; before_id?: string; after_id?: string } = {
         id: draggedCard.id,
-        list_id: listId,
-        position: finalPosition,
-      })
+        // Always include list_id to avoid backend ambiguity
+        list_id: listId
+      }
+      
+      // Calculate before_id/after_id based on position
+      if (targetListCards.length === 0) {
+        // Empty list - no need for before/after IDs
+      } else if (position === 0) {
+        // Drop at beginning - before first card
+        moveData.before_id = targetListCards[0]?.id
+      } else if (position >= targetListCards.length) {
+        // Drop at end - after last card
+        moveData.after_id = targetListCards[targetListCards.length - 1]?.id
+      } else {
+        // Drop between cards
+        moveData.after_id = targetListCards[position - 1]?.id
+        moveData.before_id = targetListCards[position]?.id
+      }
+      
+      // Call API with new format
+      const response = await apiClient.cards.moveCard(moveData)
 
       // DON'T update state here - let WebSocket event handle it to avoid conflicts
       // The card will be updated via handleCardMoved when WebSocket event is received
@@ -825,7 +840,7 @@ export default function BoardPage() {
                 const cardListId = card.list_id || card.list?.id
                 return cardListId === list.id
               })
-              .sort((a, b) => (a.position || 0) - (b.position || 0))
+              .sort((a, b) => (a.position || "0").localeCompare(b.position || "0"))
             
             return (
               <ListColumn

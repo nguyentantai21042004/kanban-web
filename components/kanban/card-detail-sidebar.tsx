@@ -85,9 +85,19 @@ export function CardDetailSidebar({
   useEffect(() => {
     if (card) {
       setIsEditing(true)
-      loadComments()
     }
   }, [card])
+
+  // Lazy-load comments only when Comments tab is opened, and only once per card
+  const commentsLoadedCardIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!card) return
+    if (activeTab !== "comments") return
+    if (commentsLoadedCardIdRef.current === card.id) return
+
+    loadComments()
+    commentsLoadedCardIdRef.current = card.id
+  }, [activeTab, card?.id])
 
   const loadComments = async () => {
     if (!card) return
@@ -104,10 +114,14 @@ export function CardDetailSidebar({
 
     setIsSubmitting(true)
     try {
+      console.log("🔔 Manual save clicked for:", card.id)
       const response = await apiClient.cards.updateCard({
         id: card.id,
-        name: card.name,
+        // Send both title and name to be compatible with API variations
+        title: (card as any).title ?? (card as any).name,
+        name: (card as any).name ?? (card as any).title,
         description: card.description,
+        priority: (card as any).priority,
         labels: card.labels,
         due_date: card.due_date,
         assigned_to: card.assigned_to,
@@ -862,7 +876,7 @@ export function CardDetailSidebar({
 
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50">
-          <Button onClick={handleSave} className="w-full" disabled={isSubmitting}>
+          <Button type="button" onClick={handleSave} className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

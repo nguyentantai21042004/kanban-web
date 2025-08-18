@@ -10,7 +10,7 @@ export interface Card {
     name: string
   }
   list_id?: string // Optional field for API responses that use list_id instead of list object
-  position: number
+  position: string // Position is now string-based using fractional indexing
   priority?: CardPriority
   assigned_to?: string
   due_date?: string
@@ -68,9 +68,10 @@ export interface UpdateCardRequest {
 }
 
 export interface MoveCardRequest {
-  id: string // Changed from card_id to id to match swagger
-  list_id: string
-  position: number
+  id: string // Card ID to move
+  list_id?: string // Optional: target list ID 
+  after_id?: string // Optional: place after this card ID
+  before_id?: string // Optional: place before this card ID
 }
 
 export interface GetCardResponse {

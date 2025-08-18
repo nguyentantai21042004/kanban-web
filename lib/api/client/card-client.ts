@@ -42,11 +42,8 @@ export class CardClient extends BaseClient {
     this.logMethodCall('getCardById', { id })
     
     try {
-      const response = await this.request<{error_code: number, message: string, data: Card}>(`/cards/${id}`)
-      if (response.error_code !== 0) {
-        throw new Error(response.message || 'Failed to get card')
-      }
-      return response.data
+      // API now returns Card directly without wrapper
+      return await this.request<Card>(`/cards/${id}`)
     } catch (error) {
       this.logError('getCardById', error)
       throw error
@@ -57,14 +54,11 @@ export class CardClient extends BaseClient {
     this.logMethodCall('createCard', data)
     
     try {
-      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards", {
+      // API now returns Card directly without wrapper
+      return await this.request<Card>("/cards", {
         method: "POST",
         body: JSON.stringify(data),
       })
-      if (response.error_code !== 0) {
-        throw new Error(response.message || 'Failed to create card')
-      }
-      return response.data
     } catch (error) {
       this.logError('createCard', error)
       throw error
@@ -75,14 +69,11 @@ export class CardClient extends BaseClient {
     this.logMethodCall('updateCard', data)
     
     try {
-      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards", {
+      // API now returns Card directly without wrapper
+      return await this.request<Card>("/cards", {
         method: "PUT",
         body: JSON.stringify(data),
       })
-      if (response.error_code !== 0) {
-        throw new Error(response.message || 'Failed to update card')
-      }
-      return response.data
     } catch (error) {
       this.logError('updateCard', error)
       throw error
@@ -93,14 +84,11 @@ export class CardClient extends BaseClient {
     this.logMethodCall('moveCard', data)
     
     try {
-      const response = await this.request<{error_code: number, message: string, data: Card}>("/cards/move", {
+      // API now returns Card directly without wrapper
+      return await this.request<Card>("/cards/move", {
         method: "POST",
         body: JSON.stringify(data),
       })
-      if (response.error_code !== 0) {
-        throw new Error(response.message || 'Failed to move card')
-      }
-      return response.data
     } catch (error) {
       this.logError('moveCard', error)
       throw error
