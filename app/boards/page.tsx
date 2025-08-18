@@ -195,7 +195,35 @@ export default function BoardsPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Kanban</h1>
+              <h1
+                className="text-lg font-semibold text-gray-900 select-none"
+                onClick={(function () {
+                  let clicks = 0
+                  let timer: number | undefined
+                  return () => {
+                    clicks += 1
+                    if (!timer) {
+                      timer = window.setTimeout(() => {
+                        clicks = 0
+                        timer = undefined
+                      }, 5000)
+                    }
+                    if (clicks >= 10) {
+                      clicks = 0
+                      if (timer) {
+                        window.clearTimeout(timer)
+                        timer = undefined
+                      }
+                      // Log current user when unlocking admin via easter egg
+                      console.log("🔓 Admin easter egg unlocked. Current user:", user)
+                      router.push('/admin')
+                    }
+                  }
+                })()}
+                title=""
+              >
+                Kanban
+              </h1>
               <p className="text-sm text-gray-600">{user?.full_name}</p>
             </div>
 
