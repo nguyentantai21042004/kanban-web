@@ -6,7 +6,7 @@ metadata:
   labels:
     app: kanban-web
 spec:
-  replicas: 2
+  replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
@@ -138,30 +138,3 @@ data:
   NEXT_PUBLIC_API_URL: "https://kanban-api.ngtantai.pro"
   NEXT_PUBLIC_APP_URL: "https://kanban.ngtantai.pro"
   NEXT_PUBLIC_WEBSOCKET_URL: "wss://kanban-api.ngtantai.pro"
-
----
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: kanban-web-hpa
-  namespace: kanban
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: kanban-web
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
