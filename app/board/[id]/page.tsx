@@ -388,7 +388,7 @@ export default function BoardPage() {
     setIsCardFormOpen(true)
   }
 
-  const handleCardFormSubmit = async (data: CardFormData) => {
+  const handleCardFormSubmit = async (data: CardFormData, attachments?: File[]) => {
     try {
       if (editingCard) {
         // Update existing card
@@ -406,6 +406,18 @@ export default function BoardPage() {
           title: "Thành công",
           description: "Card đã được cập nhật",
         })
+
+        // Optionally upload attachments after successful update
+        if (attachments && attachments.length > 0) {
+          for (const file of attachments) {
+            try {
+              // NOTE: backend needs an upload endpoint to get attachment_id; this is a placeholder for future integration
+              // await apiClient.cards.addAttachment(editingCard.id, attachmentId)
+            } catch (err) {
+              console.error("Attachment upload failed", err)
+            }
+          }
+        }
       } else {
         // Create new card
         const response = await apiClient.cards.createCard({
@@ -423,6 +435,12 @@ export default function BoardPage() {
           title: "Thành công",
           description: "Card mới đã được tạo",
         })
+
+        // Optionally upload attachments after create (requires created card id from WS or API response)
+        // If response contains id immediately, we could upload here. We're deferring until backend contract finalized.
+        if (attachments && attachments.length > 0) {
+          // Placeholder for future integration
+        }
       }
     } catch (error: any) {
       throw new Error(error.message || "Có lỗi xảy ra")
