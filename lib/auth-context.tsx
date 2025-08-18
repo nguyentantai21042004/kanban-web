@@ -90,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("access_token")
     localStorage.removeItem("user_data")
     document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
   }
 
   useEffect(() => {
@@ -133,7 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Lưu vào cookies cho middleware
       saveTokenToCookies(access_token)
-      console.log(`🍪 Token saved to cookies`)
+      // Save user role alias for middleware checking
+      if (user.role && user.role.alias) {
+        document.cookie = `user_role=${user.role.alias}; path=/; max-age=86400; SameSite=Strict`
+      }
+      console.log(`🍪 Token & role saved to cookies`)
 
       setUser(user)
       router.push("/") // Redirect to home page after login

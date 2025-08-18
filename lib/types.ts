@@ -33,7 +33,11 @@ export interface UserInfo {
   id: string
   username: string
   full_name: string
-  role: string
+  role: {
+    id: string
+    name: string
+    alias: string
+  }
 }
 
 export interface RefreshTokenRequest {
