@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  kanban-web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      # Mount toàn bộ source code để hot reload
+      - .:/app
+      # Exclude node_modules để tránh conflict
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+    container_name: kanban-web-dev
+    command: pnpm dev 
