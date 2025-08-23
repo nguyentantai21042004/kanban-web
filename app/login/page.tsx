@@ -101,12 +101,11 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Demo credentials info */}
-            <div className="mt-4 p-3 bg-blue-50 rounded text-center border border-blue-200">
-              <p className="text-xs text-blue-700 font-medium mb-1">Demo Account:</p>
-              <p className="text-xs text-blue-600">Username: <span className="font-mono">test</span></p>
-              <p className="text-xs text-blue-600">Password: <span className="font-mono">test@2025</span></p>
-              <p className="text-xs text-blue-500 mt-1">Click vào placeholder để copy</p>
+            {/* Demo credentials - compact */}
+            <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+              <p className="text-xs text-gray-500">
+                Demo: <span className="font-mono">test</span> / <span className="font-mono">test@2025</span>
+              </p>
             </div>
           </CardContent>
         </Card>
