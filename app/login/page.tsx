@@ -58,7 +58,7 @@ export default function LoginPage() {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="your_username"
+                  placeholder="test"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="test@2025"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -101,9 +101,12 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Simple demo info */}
-            <div className="mt-4 p-3 bg-gray-50 rounded text-center">
-              <p className="text-xs text-gray-600">Demo: tai210420004@gmail.com</p>
+            {/* Demo credentials info */}
+            <div className="mt-4 p-3 bg-blue-50 rounded text-center border border-blue-200">
+              <p className="text-xs text-blue-700 font-medium mb-1">Demo Account:</p>
+              <p className="text-xs text-blue-600">Username: <span className="font-mono">test</span></p>
+              <p className="text-xs text-blue-600">Password: <span className="font-mono">test@2025</span></p>
+              <p className="text-xs text-blue-500 mt-1">Click vào placeholder để copy</p>
             </div>
           </CardContent>
         </Card>
