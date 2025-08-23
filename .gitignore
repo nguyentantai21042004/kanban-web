@@ -151,3 +151,5 @@ ehthumbs.db
 Thumbs.db 
 
 swagger.json
+
+build-image.sh
