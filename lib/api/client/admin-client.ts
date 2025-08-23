@@ -3,6 +3,7 @@ import type {
   AdminDashboardResponse,
   AdminUsersResponse,
   AdminHealthResponse,
+  AdminRolesResponse,
   GetAdminUsersParams,
   CreateAdminUserRequest,
   UpdateAdminUserRequest,
@@ -15,6 +16,10 @@ export class AdminClient extends BaseClient {
 
   async getUsers(params: GetAdminUsersParams = {}): Promise<AdminUsersResponse> {
     return this.request<AdminUsersResponse>(this.createUrlWithParams('/admin/users', params))
+  }
+
+  async getRoles(): Promise<AdminRolesResponse> {
+    return this.request<AdminRolesResponse>('/admin/roles')
   }
 
   async createUser(body: CreateAdminUserRequest): Promise<any> {

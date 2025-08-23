@@ -6,7 +6,7 @@ export interface AdminRole {
 
 export interface AdminUserItem {
   id: string
-  email: string
+  username: string
   full_name: string
   role: AdminRole
   is_active: boolean
@@ -48,6 +48,12 @@ export interface AdminUsersResponse {
   data: { items: AdminUserItem[]; meta: AdminPaginatorMeta }
 }
 
+export interface AdminRolesResponse {
+  error_code: number
+  message: string
+  data: AdminRole[]
+}
+
 export interface AdminHealthData {
   api_status: 'healthy' | 'degraded' | 'down'
   response_time_ms: number
@@ -71,17 +77,15 @@ export interface GetAdminUsersParams {
 }
 
 export interface CreateAdminUserRequest {
-  email: string
+  username: string
   full_name: string
-  role_id?: string
-  role_alias?: string
+  role_id: string
   password?: string
 }
 
 export interface UpdateAdminUserRequest {
   full_name?: string
   role_id?: string
-  role_alias?: string
   is_active?: boolean
 }
 

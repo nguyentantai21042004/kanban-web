@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   BarChart3, 
   Users, 
@@ -48,13 +49,17 @@ export default function AdminPage() {
   const [isHealthLoading, setIsHealthLoading] = useState<boolean>(false)
   const [users, setUsers] = useState<any[]>([])
   const [isUsersLoading, setIsUsersLoading] = useState<boolean>(false)
+  const [roles, setRoles] = useState<any[]>([])
+  const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false)
   const [userSearch, setUserSearch] = useState<string>("")
-  const [createEmail, setCreateEmail] = useState("")
+  const [createUsername, setCreateUsername] = useState("")
   const [createFullName, setCreateFullName] = useState("")
-  const [createRoleAlias, setCreateRoleAlias] = useState("")
+  const [createRoleId, setCreateRoleId] = useState("")
   const [createPassword, setCreatePassword] = useState("")
   const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [createUserMessage, setCreateUserMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
 
+  // Check authentication and role
   useEffect(() => {
     if (isLoading) return;
 
@@ -68,15 +73,6 @@ export default function AdminPage() {
       router.replace("/boards");
     }
   }, [isLoading, user, router]);
-
-  const allowedRoles = ["admin", "super_admin"]
-  if (isLoading || !user || !allowedRoles.includes(user.role.alias)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-      </div>
-    )
-  }
 
   // Fetch dashboard on first load
   useEffect(() => {
@@ -97,14 +93,36 @@ export default function AdminPage() {
     return () => { mounted = false }
   }, [])
 
-  // Fetch users when tab active or search changes
+  // Fetch roles when users tab is active
+  useEffect(() => {
+    if (activeTab !== 'users') return
+    let mounted = true
+    const load = async () => {
+      try {
+        setIsRolesLoading(true)
+        const res = await apiClient.admin.getRoles()
+        if (mounted && res?.data) setRoles(res.data)
+      } catch (e) {
+        if (mounted) setRoles([])
+      } finally {
+        if (mounted) setIsRolesLoading(false)
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [activeTab])
+
+
+
+  // Initial load of users when users tab becomes active
   useEffect(() => {
     if (activeTab !== 'users') return
     let mounted = true
     const load = async () => {
       try {
         setIsUsersLoading(true)
-        const res = await apiClient.admin.getUsers({ search: userSearch, page: 1, limit: 20 })
+        // Load users without search params initially
+        const res = await apiClient.admin.getUsers({ page: 1, limit: 20 })
         if (mounted && res?.data?.items) setUsers(res.data.items)
       } catch (e) {
         if (mounted) setUsers([])
@@ -114,7 +132,46 @@ export default function AdminPage() {
     }
     load()
     return () => { mounted = false }
-  }, [activeTab, userSearch])
+  }, [activeTab])
+
+  // Handle search with debounce
+  useEffect(() => {
+    if (activeTab !== 'users') return
+    
+    const timeoutId = setTimeout(() => {
+      if (userSearch.trim()) {
+        // Only search if there's actual search text
+        const performSearch = async () => {
+          try {
+            setIsUsersLoading(true)
+            const res = await apiClient.admin.getUsers({ search: userSearch.trim(), page: 1, limit: 20 })
+            setUsers(res?.data?.items || [])
+          } catch (e) {
+            setUsers([])
+          } finally {
+            setIsUsersLoading(false)
+          }
+        }
+        performSearch()
+      } else if (userSearch === '') {
+        // If search is cleared, reload all users
+        const reloadUsers = async () => {
+          try {
+            setIsUsersLoading(true)
+            const res = await apiClient.admin.getUsers({ page: 1, limit: 20 })
+            setUsers(res?.data?.items || [])
+          } catch (e) {
+            setUsers([])
+          } finally {
+            setIsUsersLoading(false)
+          }
+        }
+        reloadUsers()
+      }
+    }, 500) // Debounce 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [userSearch, activeTab])
 
   // Fetch health when monitoring tab active
   useEffect(() => {
@@ -136,24 +193,65 @@ export default function AdminPage() {
   }, [activeTab])
 
   const handleCreateUser = async () => {
+    if (!createUsername || !createFullName || !createRoleId) {
+      setCreateUserMessage({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin bắt buộc (Tên đăng nhập, Họ tên, Vai trò)' })
+      return
+    }
+
+    if (createUsername.length < 3) {
+      setCreateUserMessage({ type: 'error', message: 'Tên đăng nhập phải có ít nhất 3 ký tự' })
+      return
+    }
+
     try {
       setIsCreatingUser(true)
+      setCreateUserMessage(null)
+      
       await apiClient.admin.createUser({
-        email: createEmail,
+        username: createUsername,
         full_name: createFullName,
-        role_alias: createRoleAlias || 'user',
+        role_id: createRoleId,
         password: createPassword || undefined,
       })
-      // refresh list
-      const res = await apiClient.admin.getUsers({ search: userSearch, page: 1, limit: 20 })
+      
+      // Show success message
+      setCreateUserMessage({ type: 'success', message: 'Tạo người dùng thành công!' })
+      
+      // refresh list without search params
+      const res = await apiClient.admin.getUsers({ page: 1, limit: 20 })
       setUsers(res?.data?.items || [])
-      setCreateEmail("")
+      
+      // Reset form
+      setCreateUsername("")
       setCreateFullName("")
-      setCreateRoleAlias("")
+      setCreateRoleId("")
       setCreatePassword("")
+    } catch (error: any) {
+      setCreateUserMessage({ 
+        type: 'error', 
+        message: error?.message || 'Có lỗi xảy ra khi tạo người dùng' 
+      })
     } finally {
       setIsCreatingUser(false)
     }
+  }
+
+  const resetForm = () => {
+    setCreateUsername("")
+    setCreateFullName("")
+    setCreateRoleId("")
+    setCreatePassword("")
+    setCreateUserMessage(null)
+  }
+
+  // Check if user is authorized - must be after all hooks
+  const allowedRoles = ["admin", "super_admin"]
+  if (isLoading || !user || !allowedRoles.includes(user.role.alias)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    )
   }
 
   return (
@@ -379,32 +477,50 @@ export default function AdminPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input placeholder="email@example.com" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
+                        <Label>Tên đăng nhập <span className="text-red-500">*</span></Label>
+                        <Input placeholder="username" value={createUsername} onChange={(e) => setCreateUsername(e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Họ và tên</Label>
+                        <Label>Họ và tên <span className="text-red-500">*</span></Label>
                         <Input placeholder="Nguyễn Văn A" value={createFullName} onChange={(e) => setCreateFullName(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vai trò <span className="text-red-500">*</span></Label>
+                        {isRolesLoading ? (
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-gray-500">Đang tải danh sách vai trò...</span>
+                          </div>
+                        ) : (
+                          <Select onValueChange={(value) => setCreateRoleId(value)} value={createRoleId}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Chọn vai trò" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>
+                                  {role.name} ({role.alias})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>Mật khẩu tạm (tùy chọn)</Label>
                         <Input type="password" placeholder="********" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Vai trò</Label>
-                        <Input placeholder="admin | super_admin | user" value={createRoleAlias} onChange={(e) => setCreateRoleAlias(e.target.value)} />
-                      </div>
                       <div className="flex gap-3">
                         <Button onClick={handleCreateUser} disabled={isCreatingUser}>
                           {isCreatingUser ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Đang tạo...</>) : 'Tạo'}
                         </Button>
-                        <Button variant="outline" onClick={() => { setCreateEmail(''); setCreateFullName(''); setCreateRoleAlias(''); setCreatePassword('') }}>Làm mới</Button>
+                        <Button variant="outline" onClick={resetForm}>Làm mới</Button>
                       </div>
-                      <Alert>
-                        <AlertDescription>
-                          Đây là form mẫu. Kết nối API tạo user sẽ được thêm sau.
-                        </AlertDescription>
-                      </Alert>
+                                             {createUserMessage && (
+                         <Alert variant={createUserMessage.type === 'error' ? 'destructive' : 'default'}>
+                           <AlertDescription>{createUserMessage.message}</AlertDescription>
+                         </Alert>
+                       )}
                     </CardContent>
                   </Card>
 
@@ -413,7 +529,7 @@ export default function AdminPage() {
                       <CardTitle>Tìm kiếm & Quản lý</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <Input placeholder="Tìm theo email / tên ..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
+                      <Input placeholder="Tìm theo username / tên ..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
                       {isUsersLoading ? (
                         <div className="flex items-center justify-center h-24 text-gray-400">
                           <Loader2 className="h-5 w-5 animate-spin" />
@@ -424,10 +540,13 @@ export default function AdminPage() {
                             <div key={u.id} className="flex items-center justify-between border rounded p-2">
                               <div>
                                 <div className="text-sm font-medium">{u.full_name}</div>
-                                <div className="text-xs text-gray-500">{u.email}</div>
+                                <div className="text-xs text-gray-500">@{u.username}</div>
+                                <div className="text-xs text-gray-400">
+                                  Tạo: {new Date(u.created_at).toLocaleDateString('vi-VN')}
+                                </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant="secondary">{u.role?.name}</Badge>
+                                <Badge variant="secondary">{u.role?.name} ({u.role?.alias})</Badge>
                                 <Badge className={u.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                                   {u.is_active ? 'Active' : 'Inactive'}
                                 </Badge>
