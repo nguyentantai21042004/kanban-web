@@ -64,7 +64,6 @@ pipeline {
                         def timestamp = new Date().format('yyMMdd-HHmmss')
                         env.DOCKER_WEB_IMAGE_NAME = "${env.REGISTRY_DOMAIN_NAME}/${env.ENVIRONMENT}/${env.SERVICE}:${timestamp}"
 
-                        // Build from root directory with root Dockerfile
                         sh "docker build -t ${env.DOCKER_WEB_IMAGE_NAME} -f ${WORKSPACE}/Dockerfile ${WORKSPACE}"
 
                         echo "Successfully built WEB: ${env.DOCKER_WEB_IMAGE_NAME}"                    
@@ -173,9 +172,7 @@ pipeline {
                         
                     } catch (Exception e) {
                         def errorMsg = e.getMessage().replaceAll('"', '\\\\"')
-                        // Skip verification notification
                         echo "Verification failed but deployment may still be successful: ${e.getMessage()}"
-                        // Don't fail the build on verification issues
                     }
                 }
             }
