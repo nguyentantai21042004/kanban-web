@@ -213,19 +213,4 @@ pipeline {
             }
         }
     }
-
-    post {
-        failure {
-            node {
-                notifyDiscord(env.DISCORD_CHANNEL, env.DISCORD_CHAT_ID,
-                                "🔴 Service ${env.SERVICE} ${env.ENVIRONMENT} Pipeline Failed")
-            }
-        }
-        success {
-            node {
-                notifyDiscord(env.DISCORD_CHANNEL, env.DISCORD_CHAT_ID,
-                                "🟢 Service ${env.SERVICE} ${env.ENVIRONMENT} Deploy Success")
-            }
-        }
-    }
 }
