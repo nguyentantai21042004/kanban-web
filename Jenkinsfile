@@ -17,7 +17,6 @@ pipeline {
         REGISTRY_USERNAME = 'admin'
         REGISTRY_PASSWORD = credentials('registryPassword')
 
-        // K8s Configuration
         K8S_NAMESPACE = 'kanban'
         K8S_DEPLOYMENT_NAME = 'kanban-web'
         K8S_CONTAINER_NAME = 'kanban-web'
