@@ -13,7 +13,7 @@ pipeline {
         ENVIRONMENT = 'kanban'
         SERVICE = 'kanban-web'
 
-        REGISTRY_DOMAIN_NAME = 'harbor.ngtantai.pro'
+        REGISTRY_DOMAIN_NAME = 'registry.tantai.dev'
         REGISTRY_USERNAME = 'admin'
         REGISTRY_PASSWORD = credentials('registryPassword')
 

@@ -26,7 +26,7 @@ spec:
       - name: harbor-secret
       containers:
       - name: kanban-web
-        image: harbor.ngtantai.pro/kanban/kanban-web:250826-223409
+        image: registry.tantai.dev/kanban/kanban-web:250826-223409
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
