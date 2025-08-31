@@ -6,6 +6,6 @@ export enum WebSocketMode {
 
 export class WebSocketConfig {
   static getUrl(boardId: string, token: string): string {
-    return `wss://kanban-api.ngtantai.pro/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
+    return `wss://kanban-api.tantai.dev/api/v1/websocket/ws/${boardId}?token=${encodeURIComponent(token)}`
   }
 }

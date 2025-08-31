@@ -18,7 +18,7 @@ const nextConfig = {
 
     // Environment variables
     env: {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://kanban-api.ngtantai.pro',
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://kanban-api.tantai.dev',
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://kanban.ngtantai.pro',
     },
 
@@ -68,14 +68,14 @@ const nextConfig = {
     async redirects() {
         return [{
             source: '/api/:path*',
-            destination: 'https://kanban-api.ngtantai.pro/api/:path*',
+            destination: 'https://kanban-api.tantai.dev/api/:path*',
             permanent: true,
         }, ]
     },
 
     // Images configuration
     images: {
-        domains: ['kanban-api.ngtantai.pro', 'kanban.ngtantai.pro'],
+        domains: ['kanban-api.tantai.dev', 'kanban.ngtantai.pro'],
         formats: ['image/webp', 'image/avif'],
     },
 

@@ -1,7 +1,7 @@
 export class Config {
-  static readonly API_BASE_URL = "https://kanban-api.ngtantai.pro/api/v1"
+  static readonly API_BASE_URL = "https://kanban-api.tantai.dev/api/v1"
 
-  static readonly WS_BASE_URL = 'wss://kanban-api.ngtantai.pro'
+  static readonly WS_BASE_URL = 'wss://kanban-api.tantai.dev'
 
   static isProduction(): boolean {
     return process.env.NODE_ENV === 'production'

@@ -135,6 +135,6 @@ metadata:
   namespace: kanban
 data:
   NODE_ENV: "production"
-  NEXT_PUBLIC_API_URL: "https://kanban-api.ngtantai.pro"
+  NEXT_PUBLIC_API_URL: "https://kanban-api.tantai.dev"
   NEXT_PUBLIC_APP_URL: "https://kanban.ngtantai.pro"
-  NEXT_PUBLIC_WEBSOCKET_URL: "wss://kanban-api.ngtantai.pro"
+  NEXT_PUBLIC_WEBSOCKET_URL: "wss://kanban-api.tantai.dev"
