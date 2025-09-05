@@ -29,8 +29,8 @@ pipeline {
         TEXT_CLEANUP_OLD_IMAGES_FAIL = "🔴 Cleanup Old Images Failed"
         TEXT_END = "🟢 Service ${SERVICE} ${ENVIRONMENT} Build Finished"
 
-        DISCORD_CHANNEL = '1382725588321828934'
-        DISCORD_CHAT_ID = 'Q1edE75TA7jJlloegQ2MxDpBxAGoVFz0buoSwW-wg6mTLozxP20oagKFlRiN5l1fyCOQ'
+        DISCORD_CHANNEL = credentials('kanban-discord-channel')
+        DISCORD_CHAT_ID = credentials('kanban-discord-chat-id')
     }
 
     stages {
