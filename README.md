@@ -1,37 +1,37 @@
-# Kanban Web - Hệ thống quản lý công việc nội bộ
+# Kanban Web - Internal Task Management System
 
-Hệ thống Kanban board hiện đại được xây dựng với Next.js 14, TypeScript và Tailwind CSS để quản lý công việc nội bộ của tổ chức.
+A modern Kanban board system built with Next.js 14, TypeScript, and Tailwind CSS for internal organizational task management.
 
-## 🚀 Tính năng chính
+## 🚀 Key Features
 
-### 📋 Quản lý Board
-- Tạo và quản lý nhiều Kanban boards
-- Tìm kiếm và lọc boards theo từ khóa
-- Giao diện responsive, thân thiện với người dùng
+### 📋 Board Management
+- Create and manage multiple Kanban boards
+- Search and filter boards by keywords
+- Responsive, user-friendly interface
 
-### 📝 Quản lý Cards
-- **Drag & Drop**: Kéo thả cards giữa các lists
-- **Priority levels**: Thấp, Trung bình, Cao
-- **Labels**: Phân loại với màu sắc tùy chỉnh
-- **Due dates**: Thiết lập deadline cho công việc
-- **Descriptions**: Mô tả chi tiết công việc
+### 📝 Card Management
+- **Drag & Drop**: Drag cards between lists
+- **Priority levels**: Low, Medium, High
+- **Labels**: Categorize with customizable colors
+- **Due dates**: Set deadlines for tasks
+- **Descriptions**: Detailed task descriptions
 
-### 🏷️ Quản lý Lists
-- Tạo, chỉnh sửa và xóa lists
-- Sắp xếp cards theo thứ tự tùy chỉnh
-- Giao diện trực quan với cards được phân loại
+### 🏷️ List Management
+- Create, edit, and delete lists
+- Custom card ordering
+- Visual interface with categorized cards
 
-### 🔐 Xác thực người dùng
-- Hệ thống đăng nhập/đăng xuất
-- Quản lý phiên làm việc
-- Bảo mật dữ liệu người dùng
+### 🔐 User Authentication
+- Login/logout system
+- Session management
+- User data security
 
 ### ⚡ Real-time Updates
-- WebSocket integration cho cập nhật real-time
-- Đồng bộ hóa dữ liệu giữa các phiên làm việc
-- Thông báo thay đổi tức thì
+- WebSocket integration for real-time updates
+- Data synchronization across sessions
+- Instant change notifications
 
-## 🛠️ Công nghệ sử dụng
+## 🛠️ Technologies Used
 
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS, Radix UI Components
@@ -40,27 +40,27 @@ Hệ thống Kanban board hiện đại được xây dựng với Next.js 14, T
 - **Authentication**: Custom auth system
 - **Package Manager**: pnpm
 
-## 🐳 Chạy với Docker
+## 🐳 Running with Docker
 
-### Development Mode (Khuyến nghị)
+### Development Mode (Recommended)
 ```bash
-# Chạy với hot reload
+# Run with hot reload
 docker-compose -f docker-compose.dev.yml up -d --build
 
-# Xem logs
+# View logs
 docker-compose -f docker-compose.dev.yml logs -f
 ```
 
 ### Production Mode
 ```bash
-# Chạy production build
+# Run production build
 docker-compose up -d --build
 
-# Xem logs
+# View logs
 docker-compose logs -f
 ```
 
-### Dừng container
+### Stop containers
 ```bash
 # Development
 docker-compose -f docker-compose.dev.yml down
@@ -69,33 +69,33 @@ docker-compose -f docker-compose.dev.yml down
 docker-compose down
 ```
 
-## 🚀 Chạy local development
+## 🚀 Local Development
 
-### Yêu cầu
+### Requirements
 - Node.js 18+
 - pnpm
 
-### Cài đặt
+### Installation
 ```bash
 # Clone repository
 git clone <repository-url>
 cd kanban-web
 
-# Cài đặt dependencies
+# Install dependencies
 pnpm install
 
-# Chạy development server
+# Run development server
 pnpm dev
 ```
 
-## 📱 Giao diện
+## 📱 Interface
 
-- **Responsive design**: Hoạt động tốt trên desktop, tablet và mobile
-- **Dark/Light mode**: Hỗ trợ chế độ tối/sáng
-- **Modern UI**: Giao diện hiện đại với animations mượt mà
-- **Accessibility**: Tuân thủ các tiêu chuẩn accessibility
+- **Responsive design**: Works well on desktop, tablet, and mobile
+- **Dark/Light mode**: Support for dark/light themes
+- **Modern UI**: Modern interface with smooth animations
+- **Accessibility**: Compliant with accessibility standards
 
-## 🔧 Cấu trúc dự án
+## 🔧 Project Structure
 
 ```
 kanban-web/
@@ -107,27 +107,30 @@ kanban-web/
 ├── components/            # React components
 │   ├── kanban/           # Kanban-specific components
 │   └── ui/               # Reusable UI components
-├── lib/                  # Utilities và configurations
+├── lib/                  # Utilities and configurations
 ├── hooks/                # Custom React hooks
 └── public/               # Static assets
 ```
 
-## 🎯 Tính năng nổi bật
+## 🎯 Key Features
 
-- ✅ **Drag & Drop** cards giữa lists
-- ✅ **Real-time updates** qua WebSocket
-- ✅ **Priority management** với 3 mức độ
-- ✅ **Label system** với màu sắc tùy chỉnh
-- ✅ **Due date tracking** cho deadlines
+- ✅ **Drag & Drop** cards between lists
+- ✅ **Real-time updates** via WebSocket
+- ✅ **Priority management** with 3 levels
+- ✅ **Label system** with customizable colors
+- ✅ **Due date tracking** for deadlines
 - ✅ **Search & Filter** boards
-- ✅ **Responsive design** cho mọi thiết bị
-- ✅ **Modern UI/UX** với animations
-- ✅ **TypeScript** cho type safety
-- ✅ **Docker support** cho deployment
+- ✅ **Responsive design** for all devices
+- ✅ **Modern UI/UX** with animations
+- ✅ **TypeScript** for type safety
+- ✅ **Docker support** for deployment
 
-## 🌐 Truy cập ứng dụng
+## 🌐 Live Demo
 
-Sau khi chạy container, ứng dụng có sẵn tại:
+Access the application at: **https://kanban.tantai.dev**
+
+### Local Development
+After running containers, the application is available at:
 - **Development**: http://localhost:3000
 - **Production**: http://localhost:3000
 
