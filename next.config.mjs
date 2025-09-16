@@ -19,7 +19,7 @@ const nextConfig = {
     // Environment variables
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://kanban-api.tantai.dev',
-        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://kanban.ngtantai.pro',
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://kanban.tantai.dev',
     },
 
     // Headers for security and favicon
@@ -75,7 +75,7 @@ const nextConfig = {
 
     // Images configuration
     images: {
-        domains: ['kanban-api.tantai.dev', 'kanban.ngtantai.pro'],
+        domains: ['kanban-api.tantai.dev', 'kanban.tantai.dev'],
         formats: ['image/webp', 'image/avif'],
     },
 

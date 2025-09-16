@@ -116,7 +116,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: kanban.ngtantai.pro
+  - host: kanban.tantai.dev
     http:
       paths:
       - path: /
@@ -136,5 +136,5 @@ metadata:
 data:
   NODE_ENV: "production"
   NEXT_PUBLIC_API_URL: "https://kanban-api.tantai.dev"
-  NEXT_PUBLIC_APP_URL: "https://kanban.ngtantai.pro"
+  NEXT_PUBLIC_APP_URL: "https://kanban.tantai.dev"
   NEXT_PUBLIC_WEBSOCKET_URL: "wss://kanban-api.tantai.dev"
